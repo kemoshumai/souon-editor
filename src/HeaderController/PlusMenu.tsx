@@ -3,6 +3,7 @@ import { MdAddChart, MdMusicNote } from "react-icons/md";
 import { PiPlus } from "react-icons/pi";
 import store from "../store/store";
 import Chart from "../store/chart";
+import { toaster } from "../components/ui/toaster";
 
 enum PlusMenuSelection {
   SetMusicFile = "set_music_file",
@@ -27,7 +28,10 @@ export default function PlusMenu() {
 
     switch (value) {
       case PlusMenuSelection.SetMusicFile:
-        console.log("SetMusicFile");
+        toaster.create({
+          title: "未実装の機能です。ごめんね。",
+          type: "warning"
+        });
         break;
       case PlusMenuSelection.AddChart:
         AddChart();
