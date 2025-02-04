@@ -7,7 +7,7 @@ import { Field } from "../components/ui/field";
 import { useState } from "react";
 import { GoGrabber } from "react-icons/go";
 
-export default function Track(props: { uuid: string; }) {
+export default function Track(props: { uuid: string; headerOffsetY: number; }) {
 
   const snap = useSnapshot(store);
 
@@ -24,7 +24,7 @@ export default function Track(props: { uuid: string; }) {
       transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
       transition,
     }}>
-      <TrackHeader>
+      <TrackHeader headerOffsetY={props.headerOffsetY} >
         <Bleed position={"absolute"} right={0} top={0} {...listeners} cursor={"grab"} w={35} h={35}>
           <GoGrabber size={35} />
         </Bleed>

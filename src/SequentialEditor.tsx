@@ -36,8 +36,12 @@ export default function SequentialEditor() {
     <Text fontSize={"xl"} color={"gray.400"} >表示する譜面がありません</Text>
   </Center>;
 
+  const [headerOffsetY, setHeaderOffsetY] = useState(0);
+
   return (
-    <Bleed flex={1} overflowX={"scroll"} overflowY={"scroll"} scrollbar={"hidden"}>
+    <Bleed flex={1} overflowX={"scroll"} overflowY={"scroll"} scrollbar={"hidden"} onScroll={e => {
+      setHeaderOffsetY(e.currentTarget.scrollTop);
+    }} >
       <HStack minH={"100%"} >
         <DndContext
           sensors={sensors}
@@ -49,7 +53,7 @@ export default function SequentialEditor() {
           <SortableContext items={items} strategy={horizontalListSortingStrategy} >
             <For each={items} fallback={fallback} >
               {(chart) => (
-                <Track key={chart} uuid={chart} />
+                <Track key={chart} uuid={chart} headerOffsetY={headerOffsetY} />
               )}
             </For>
           </SortableContext>
