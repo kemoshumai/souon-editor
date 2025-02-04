@@ -3,6 +3,7 @@ import { PiPlay } from "react-icons/pi";
 import { useSnapshot } from "valtio";
 import store from "./store/store";
 import { useState } from "react";
+import PlusMenu from "./HeaderController/PlusMenu";
 
 export default function HeaderController() {
 
@@ -13,6 +14,7 @@ export default function HeaderController() {
   return (
     <Stack w={"100vw"} gap={0}>
       <HStack w={"100vw"}>
+        <PlusMenu />
         <Button w="10" h="10"><PiPlay /></Button>
         <Input
           w={300}
