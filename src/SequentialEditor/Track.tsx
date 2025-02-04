@@ -1,8 +1,10 @@
-import { Bleed, Center, Text } from "@chakra-ui/react";
+import { Bleed, Center, Input, Separator, Stack, Text } from "@chakra-ui/react";
 import TrackHeader from "./TrackHeader";
 import { useSnapshot } from "valtio";
 import store from "../store/store";
 import { useSortable } from "@dnd-kit/sortable";
+import { Field } from "../components/ui/field";
+import { useState } from "react";
 
 export default function Track(props: { uuid: string; }) {
 
@@ -12,16 +14,27 @@ export default function Track(props: { uuid: string; }) {
     id: props.uuid,
   });
 
+  const chart = snap.project.charts.find(c => c.uuid === props.uuid);
+
+  const [laneNumber, setLaneNumber] = useState(chart?.laneNumber);
+
   return (
     <Bleed minH={"200vh"} bgColor={"gray.800"} ref={setNodeRef} minW={350} w={350} {...attributes} {...listeners} opacity={isDragging ? 0.5 : 1.0} style={{
       transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
       transition,
     }}>
       <TrackHeader>
-        <Center h={"100%"} >
-          <Text>{snap.project.charts.find(c=>c.uuid == props.uuid)?.label}</Text>
-          <Text>{props.uuid}</Text>
-        </Center>
+        <Stack>
+          <Center h={"100%"} ><Text fontSize={"xl"}>{chart?.label}</Text></Center>
+          <Field label={"レーン数"} required helperText={"1以上の整数"} >
+            <Input type={"number"} value={laneNumber} onChange={e => setLaneNumber(parseInt(e.target.value))} onBlur={e => {
+              const chart = store.project.charts.find(c => c.uuid === props.uuid);
+              if (chart) {
+                chart.laneNumber = laneNumber ?? 12;
+              }
+            }} />
+          </Field>
+        </Stack>
       </TrackHeader>
     </Bleed>
   );

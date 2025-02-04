@@ -1,8 +1,7 @@
-import { Bleed, Separator } from "@chakra-ui/react";
+import { Bleed } from "@chakra-ui/react";
 
 export default function TrackHeader(props: { children: React.ReactNode; }) {
-  return (<Bleed position={"relative"} w={"100%"} h={50}>
+  return (<Bleed position={"relative"} w={"100%"} h={100} borderBottom={"solid 1px"} borderColor={"black"} >
     {props.children}
-    <Separator />
   </Bleed>);
 }
