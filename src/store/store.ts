@@ -1,12 +1,12 @@
 import { proxy } from "valtio";
-import Chart from "./chart";
+import Project from "./project";
 
 interface Store {
-  charts: Chart[]
+  project: Project;
 }
 
 const store = proxy<Store>({
-  charts: []
+  project: new Project("Default Project", []),
 });
 
 export default store;
