@@ -39,7 +39,7 @@ export default function SequentialEditor() {
   </Center>;
 
   return (
-    <Bleed flex={1} overflowX={"scroll"} overflowY={"scroll"} scrollbar={"hidden"} >
+    <Bleed flex={1} overflowX={"scroll"} overflowY={"scroll"} >
       <HStack minH={"100%"} >
         <DndContext
           sensors={sensors}
