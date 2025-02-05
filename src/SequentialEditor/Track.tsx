@@ -1,9 +1,8 @@
-import { Bleed, Center, Input, Stack, Text } from "@chakra-ui/react";
+import { Bleed, Editable, Flex, Stack, Text } from "@chakra-ui/react";
 import TrackHeader from "./TrackHeader";
 import { useSnapshot } from "valtio";
 import store from "../store/store";
 import { useSortable } from "@dnd-kit/sortable";
-import { Field } from "../components/ui/field";
 import { useState } from "react";
 import { GoGrabber } from "react-icons/go";
 
@@ -16,7 +15,9 @@ export default function Track(props: { uuid: string; }) {
   });
 
   const chart = snap.project.charts.find(c => c.uuid === props.uuid);
+  const chartStore = store.project.charts.find(c => c.uuid === props.uuid);
 
+  const [label, setLabel] = useState(chart?.label);
   const [laneNumber, setLaneNumber] = useState(chart?.laneNumber);
 
   return (
@@ -29,18 +30,32 @@ export default function Track(props: { uuid: string; }) {
           <GoGrabber size={35} />
         </Bleed>
         <Stack>
-          <Center h={"100%"} ><Text fontSize={"xl"}>{chart?.label}</Text></Center>
-          <Field label={"レーン数"} required helperText={"1以上の整数"} >
-            <Input type={"number"} value={laneNumber} onChange={e => setLaneNumber(parseInt(e.target.value))} onBlur={_ => {
-              const chart = store.project.charts.find(c => c.uuid === props.uuid);
-              if (chart) {
-                chart.laneNumber = laneNumber ?? 12;
-              }
-            }} />
-          </Field>
+          <Bleed mr={10}>
+            <Editable.Root textAlign={"start"} defaultValue={chart?.label} w={"100%"} onValueChange={e => setLabel(e.value)} onBlur={_ => {
+              if (chartStore) {
+                chartStore.label = label ?? "";
+              }}} >
+              <Editable.Preview />
+              <Editable.Input />
+            </Editable.Root>
+          </Bleed>
+          <Flex direction={"row"} alignItems={"center"} justifyContent={"space-between"}>
+            <Text>レーン数: </Text>
+            <Editable.Root flex={1} textAlign={"start"} defaultValue={chart?.laneNumber.toString()} pl={2} onValueChange={e => setLaneNumber(parseInt(e.value))} onBlur={_ => {
+              if (chartStore) {
+                chartStore.laneNumber = laneNumber ?? 0;
+              }}} >
+              <Editable.Preview w={"80%"} />
+              <Editable.Input w={"80%"} />
+            </Editable.Root>
+          </Flex>
         </Stack>
       </TrackHeader>
-      <Bleed position={"relative"} top={700} left={10} w={100} h={30} bgColor={"red.300"} >
+      <Bleed position={"relative"} top={700} left={10} w={300} h={300} bgColor={"red.300"} >
+        <Stack>
+          <Text>{chart?.label}</Text>
+          <Text>{chart?.laneNumber}</Text>
+        </Stack>
       </Bleed>
     </Bleed>
   );
