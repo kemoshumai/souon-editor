@@ -1,11 +1,12 @@
 import { Bleed, Center, For, HStack, Text } from "@chakra-ui/react";
 import { useSnapshot } from "valtio";
 import store from "./store/store";
-import Track from "./SequentialEditor/Track";
+import ChartTrack from "./SequentialEditor/ChartTrack";
 import { closestCenter, DndContext, DragEndEvent, PointerSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { horizontalListSortingStrategy, SortableContext } from "@dnd-kit/sortable";
 import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
 import { useEffect, useState } from "react";
+import MusicTrack from "./SequentialEditor/MusicTrack";
 
 export default function SequentialEditor() {
 
@@ -16,7 +17,7 @@ export default function SequentialEditor() {
   const sensors = useSensors( useSensor(PointerSensor), useSensor(TouchSensor) );
 
   useEffect(() => {
-    setItems(snap.project.charts.map(c => c.uuid));
+    setItems(["MUSIC", ...snap.project.charts.map(c => c.uuid)]);
   }, [snap.project.charts]);
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -51,7 +52,8 @@ export default function SequentialEditor() {
           <SortableContext items={items} strategy={horizontalListSortingStrategy} >
             <For each={items} fallback={fallback} >
               {(chart) => (
-                <Track key={chart} uuid={chart} />
+                chart === "MUSIC" ? <MusicTrack /> :
+                <ChartTrack key={chart} uuid={chart} />
               )}
             </For>
           </SortableContext>

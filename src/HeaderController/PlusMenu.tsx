@@ -50,7 +50,7 @@ export default function PlusMenu() {
 
       store.project.music = assetUrl;
       
-      toaster.create({ title: copyTo, description: assetUrl, type: "info" });
+      toaster.create({ title: "音楽ファイルを読み込みました。", description: file, type: "info" });
     }
   }
 
