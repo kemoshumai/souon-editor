@@ -2,6 +2,8 @@ import { Bleed } from "@chakra-ui/react";
 import TrackHeader from "./TrackHeader";
 import { useSortable } from "@dnd-kit/sortable";
 import { GoGrabber } from "react-icons/go";
+import { useSnapshot } from "valtio";
+import store from "../store/store";
 
 export default function Track(props: { uuid: string; children: React.ReactNode; header: React.ReactNode; w: number }) {
 
@@ -9,8 +11,12 @@ export default function Track(props: { uuid: string; children: React.ReactNode; 
     id: props.uuid,
   });
 
+  const snap = useSnapshot(store);
+  const { musicLength, zoomScale } = snap.project;
+  const h = musicLength * zoomScale * 100;
+
   return (
-    <Bleed minH={"200vh"} bgColor={"gray.800"} ref={setNodeRef} minW={props.w} w={props.w} {...attributes} opacity={isDragging ? 0.5 : 1.0} style={{
+    <Bleed minH={"100vh"} h={`${h}px`} bgColor={"gray.800"} ref={setNodeRef} minW={props.w} w={props.w} {...attributes} opacity={isDragging ? 0.5 : 1.0} style={{
       transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
       transition,
     }}>
