@@ -1,4 +1,4 @@
-import { Button, HStack, Input, Separator, Stack } from "@chakra-ui/react";
+import { Button, HStack, Input, Separator, Stack, Text } from "@chakra-ui/react";
 import { PiPlay } from "react-icons/pi";
 import { useSnapshot } from "valtio";
 import store from "./store/store";
@@ -22,6 +22,10 @@ export default function HeaderController() {
           onChange={e => setInputName(e.target.value)}
           onBlur={() => store.project.name = inputName}
         />
+        <HStack mx={2}>
+          <Text>秒尺：</Text>
+          <Text>{snap.project.musicLength}</Text>
+        </HStack>
       </HStack>
       <Separator />
     </Stack>
