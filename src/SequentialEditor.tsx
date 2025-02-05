@@ -4,6 +4,7 @@ import store from "./store/store";
 import Track from "./SequentialEditor/Track";
 import { closestCenter, DndContext, DragEndEvent, PointerSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { horizontalListSortingStrategy, SortableContext } from "@dnd-kit/sortable";
+import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
 import { useEffect, useState } from "react";
 
 export default function SequentialEditor() {
@@ -45,6 +46,7 @@ export default function SequentialEditor() {
           onDragStart={event => {console.log("onDragStart", event.active.data.current)}}
           onDragEnd={handleDragEnd}
           onDragCancel={event => {console.log("onDragCancel", event.active.data.current)}}
+          modifiers={[restrictToHorizontalAxis]}
         >
           <SortableContext items={items} strategy={horizontalListSortingStrategy} >
             <For each={items} fallback={fallback} >
