@@ -17,6 +17,7 @@ export default function MusicTrack() {
     <Track uuid={"MUSIC"} header={header} w={100} >
       <Stack>
         <Text>Music: {snap.project.music}</Text>
+        <Text>Length: {snap.project.musicLength}</Text>
       </Stack>
     </Track>
   );

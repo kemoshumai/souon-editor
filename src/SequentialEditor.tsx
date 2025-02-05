@@ -52,7 +52,7 @@ export default function SequentialEditor() {
           <SortableContext items={items} strategy={horizontalListSortingStrategy} >
             <For each={items} fallback={fallback} >
               {(chart) => (
-                chart === "MUSIC" ? <MusicTrack /> :
+                chart === "MUSIC" ? <MusicTrack key={"MUSIC"} /> :
                 <ChartTrack key={chart} uuid={chart} />
               )}
             </For>
