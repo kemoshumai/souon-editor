@@ -6,7 +6,7 @@ interface Store {
 }
 
 const store = proxy<Store>({
-  project: new Project("Default Project", []),
+  project: new Project("", "Default Project", []),
 });
 
 export default store;

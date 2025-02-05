@@ -1,9 +1,13 @@
 import { Button, MenuContent, MenuItem, MenuRoot, MenuSelectionDetails, MenuTrigger } from "@chakra-ui/react";
 import { MdAddChart, MdMusicNote } from "react-icons/md";
 import { PiPlus } from "react-icons/pi";
+import { open } from "@tauri-apps/plugin-dialog";
+import { copyFile } from "@tauri-apps/plugin-fs";
+import * as path from '@tauri-apps/api/path';
 import store from "../store/store";
 import Chart from "../store/chart";
 import { toaster } from "../components/ui/toaster";
+import { convertFileSrc } from "@tauri-apps/api/core";
 
 enum PlusMenuSelection {
   SetMusicFile = "set_music_file",
@@ -23,15 +27,39 @@ export default function PlusMenu() {
 
   };
 
+  const SetMusic = async () => {
+    const file = await open({
+      multiple: false,
+      filters: [
+        {
+          name: "音楽ファイル",
+          extensions: ["mp3", "wav", "ogg", "flac"]
+        }
+      ]
+    });
+
+    if (file) {
+
+      const musicUuid = crypto.randomUUID();
+      const ext = file.toString().split('.').pop()!;
+
+      const copyTo = await path.join(await path.appLocalDataDir(), musicUuid+"."+ext);
+      await copyFile(file.toString(), copyTo);
+
+      const assetUrl = await convertFileSrc(copyTo);
+
+      store.project.music = assetUrl;
+      
+      toaster.create({ title: copyTo, description: assetUrl, type: "info" });
+    }
+  }
+
   const onSelect = (d: MenuSelectionDetails) => {
     const value = d.value;
 
     switch (value) {
       case PlusMenuSelection.SetMusicFile:
-        toaster.create({
-          title: "未実装の機能です。ごめんね。",
-          type: "warning"
-        });
+        SetMusic();
         break;
       case PlusMenuSelection.AddChart:
         AddChart();

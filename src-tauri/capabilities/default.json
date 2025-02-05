@@ -8,6 +8,9 @@
     "opener:default",
     "shell:allow-open",
     "dialog:allow-open",
-    "fs:allow-read-text-file"
+    "fs:scope-applocaldata",
+    "fs:allow-copy-file",
+    "fs:write-all",
+    "fs:allow-applocaldata-write-recursive"
   ]
 }
