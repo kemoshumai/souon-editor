@@ -17,7 +17,7 @@ export default function MusicTrack() {
 
     if (!canvas) return;
 
-    canvas.height = snap.project.musicLength * 100;
+    canvas.height = 8000;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
