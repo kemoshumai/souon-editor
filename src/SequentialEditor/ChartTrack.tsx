@@ -39,11 +39,13 @@ export default function ChartTrack(props: { uuid: string; }) {
   </>;
 
   return (
-    <Track uuid={props.uuid} header={header} w={350} >
-      <Stack>
-        <Text>{chart?.label}</Text>
-        <Text>{chart?.laneNumber}</Text>
-      </Stack>
+    <Track uuid={props.uuid} header={header} w={350 / 12 * ( chart?.laneNumber ?? 1 )} >
+      <Flex position={"relative"} top={0} h={"100%"} w={"100%"}>
+        <Bleed borderLeft={"solid 1px"} borderRight={"solid 1px"} flex={1} bgColor={"red.800"}></Bleed>
+        {[...Array(chart?.laneNumber ?? 0)].map((_, i) => <Bleed key={i} borderLeft={"solid 1px"} borderRight={"solid 1px"} flex={1} 
+          bgColor={["gray.800", "gray.700"][[0,1,0,1,0,0,1,0,1,0,1,0][i%12]]}
+        ></Bleed>)}
+      </Flex>
     </Track>
   );
 }
