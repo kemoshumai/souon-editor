@@ -1,15 +1,32 @@
 export default class TemporalPosition {
-  private _position: number;
+  private _nanoseconds: bigint;
 
-  constructor(position: number) {
-    this._position = position;
+  constructor(nanoseconds: bigint) {
+    this._nanoseconds = nanoseconds;
   }
 
-  get position(): number {
-    return this._position;
+  get nanoseconds(): bigint {
+    return this._nanoseconds;
   }
 
-  set position(position: number) {
-    this._position = position;
+  set nanoseconds(nanoseconds: bigint) {
+    this._nanoseconds = nanoseconds;
+  }
+
+  // 四則演算
+  add(nanoseconds: bigint): TemporalPosition {
+    return new TemporalPosition(this._nanoseconds + nanoseconds);
+  }
+
+  subtract(nanoseconds: bigint): TemporalPosition {
+    return new TemporalPosition(this._nanoseconds - nanoseconds);
+  }
+
+  multiply(nanoseconds: bigint): TemporalPosition {
+    return new TemporalPosition(this._nanoseconds * nanoseconds);
+  }
+
+  divide(nanoseconds: bigint): TemporalPosition {
+    return new TemporalPosition(this._nanoseconds / nanoseconds);
   }
 }
