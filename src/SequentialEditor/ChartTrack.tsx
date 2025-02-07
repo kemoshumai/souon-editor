@@ -1,8 +1,9 @@
-import { Bleed, Editable, Flex, Stack, Text } from "@chakra-ui/react";
+import { Bleed, Center, Editable, Flex, Stack, Text } from "@chakra-ui/react";
 import { useSnapshot } from "valtio";
 import store from "../store/store";
 import { useState } from "react";
 import Track from "./Track";
+import { SegmentedControl } from "../components/ui/segmented-control";
 
 export default function ChartTrack(props: { uuid: string; }) {
 
@@ -14,8 +15,15 @@ export default function ChartTrack(props: { uuid: string; }) {
   const [label, setLabel] = useState(chart?.label);
   const [laneNumber, setLaneNumber] = useState(chart?.laneNumber);
 
+  const [mode, setMode] = useState<"Stripe" | "Order" | "Mirror">("Order");
+
+  const pattern = mode == "Order" ? [0,1,0,1,0,0,1,0,1,0,1,0, 0,1,0,1,0,0,1,0,1,0,1,0]
+    : mode == "Mirror" ? [0,1,0,1,0,1,0,0,1,0,1,0, 0,1,0,1,0,0,1,0,1,0,1,0]
+    : [0,1,0,1,0,1,0,1,0,1,0,1, 0,1,0,1,0,1,0,1,0,1,0,1];
+  
+
   const header = <>
-    <Stack>
+    <Stack gap={0}>
       <Bleed mr={10}>
         <Editable.Root textAlign={"start"} defaultValue={chart?.label} w={"100%"} onValueChange={e => setLabel(e.value)} onBlur={_ => {
           if (chartStore) {
@@ -25,8 +33,8 @@ export default function ChartTrack(props: { uuid: string; }) {
           <Editable.Input />
         </Editable.Root>
       </Bleed>
-      <Flex direction={"row"} alignItems={"center"} justifyContent={"space-between"}>
-        <Text>レーン数: </Text>
+      <Flex direction={"row"} alignItems={"center"} justifyContent={"space-between"} h={4} mb={2} ml={1}>
+        <Text fontSize={"sm"}>レーン数: </Text>
         <Editable.Root flex={1} textAlign={"start"} defaultValue={chart?.laneNumber.toString()} pl={2} onValueChange={e => setLaneNumber(parseInt(e.value))} onBlur={_ => {
           if (chartStore) {
             chartStore.laneNumber = laneNumber ?? 0;
@@ -35,6 +43,7 @@ export default function ChartTrack(props: { uuid: string; }) {
           <Editable.Input w={"80%"} />
         </Editable.Root>
       </Flex>
+      <Center><SegmentedControl items={["Stripe", "Order", "Mirror"] } size={"xs"} w={12} defaultValue={"Order"} onValueChange={e => setMode(e.value as "Stripe" | "Order" | "Mirror")} /></Center>
     </Stack>
   </>;
 
@@ -43,7 +52,7 @@ export default function ChartTrack(props: { uuid: string; }) {
       <Flex position={"relative"} top={0} h={"100%"} w={"100%"}>
         <Bleed borderLeft={"solid 1px"} borderRight={"solid 1px"} flex={1} bgColor={"red.800"}></Bleed>
         {[...Array(chart?.laneNumber ?? 0)].map((_, i) => <Bleed key={i} borderLeft={"solid 1px"} borderRight={"solid 1px"} flex={1} 
-          bgColor={["gray.800", "gray.700"][[0,1,0,1,0,0,1,0,1,0,1,0][i%12]]}
+          bgColor={["gray.800", "gray.700"][pattern[i%24]]}
         ></Bleed>)}
       </Flex>
     </Track>
