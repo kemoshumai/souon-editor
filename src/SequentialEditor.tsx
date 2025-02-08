@@ -7,6 +7,7 @@ import { horizontalListSortingStrategy, SortableContext } from "@dnd-kit/sortabl
 import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
 import { useEffect, useState } from "react";
 import MusicTrack from "./SequentialEditor/MusicTrack";
+import TempoTrack from "./SequentialEditor/TempoTrack";
 
 export default function SequentialEditor() {
 
@@ -17,7 +18,7 @@ export default function SequentialEditor() {
   const sensors = useSensors( useSensor(PointerSensor), useSensor(TouchSensor) );
 
   useEffect(() => {
-    setItems(["MUSIC", ...snap.project.charts.map(c => c.uuid)]);
+    setItems(["MUSIC", "TEMPO", ...snap.project.charts.map(c => c.uuid)]);
   }, [snap.project.charts]);
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -53,6 +54,7 @@ export default function SequentialEditor() {
             <For each={items} fallback={fallback} >
               {(chart) => (
                 chart === "MUSIC" ? <MusicTrack key={"MUSIC"} /> :
+                chart === "TEMPO" ? <TempoTrack key={"TEMPO"} /> :
                 <ChartTrack key={chart} uuid={chart} />
               )}
             </For>
