@@ -12,8 +12,7 @@ export default function Track(props: { uuid: string; children: React.ReactNode; 
   });
 
   const snap = useSnapshot(store);
-  const { musicLength, zoomScale } = snap.project;
-  const h = musicLength * zoomScale * 100;
+  const h = snap.project.getHeight();
 
   return (
     <Bleed minH={"100vh"} h={`${100+h}px`} bgColor={"gray.800"} ref={setNodeRef} minW={props.w} w={props.w} {...attributes} opacity={isDragging ? 0.5 : 1.0} style={{

@@ -7,15 +7,24 @@ export default class Project {
   zoomScale: number;
   name: string;
   charts: Chart[];
-  musicTempo: TempoEvent[];
+  musicTempoList: TempoEvent[];
 
-  constructor(music: string, name: string, charts: Chart[], musicTempo: TempoEvent[]) {
+  constructor(music: string, name: string, charts: Chart[], musicTempoList: TempoEvent[]) {
     this.music = music;
     this.name = name;
     this.charts = charts;
 
     this.musicLength = 0;
     this.zoomScale = 1.0;
-    this.musicTempo = musicTempo;
+    this.musicTempoList = musicTempoList;
   }
+
+  getHeight(): number {
+    return this.musicLength * this.zoomScale * 100;
+  }
+
+  getYPosition(position: { seconds: number }): number {
+    return position.seconds * this.zoomScale * 100;
+  }
+
 }
