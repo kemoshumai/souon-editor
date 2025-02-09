@@ -13,6 +13,10 @@ export default class TemporalPosition {
     this._nanoseconds = nanoseconds;
   }
 
+  get seconds(): number {
+    return Number(this._nanoseconds) / 1_000_000_000;
+  }
+
   // 四則演算
   add(nanoseconds: bigint): TemporalPosition {
     return new TemporalPosition(this._nanoseconds + nanoseconds);
