@@ -33,4 +33,8 @@ export default class TemporalPosition {
   divide(nanoseconds: bigint): TemporalPosition {
     return new TemporalPosition(this._nanoseconds / nanoseconds);
   }
+
+  static createWithSeconds(seconds: number): TemporalPosition {
+    return new TemporalPosition(BigInt(seconds * 1_000_000_000));
+  }
 }

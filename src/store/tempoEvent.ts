@@ -18,4 +18,8 @@ export default class TempoEvent {
     return new TempoEvent(uuid, position, tempo, beat);
   }
 
+  getBarTemporalUnit(): TemporalPosition {
+    return TemporalPosition.createWithSeconds(60).divide(BigInt(this.tempo)).multiply(BigInt(this.beat));
+  }
+
 }

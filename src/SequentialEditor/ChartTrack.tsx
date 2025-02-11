@@ -60,7 +60,11 @@ export default function ChartTrack(props: { uuid: string; }) {
           <For each={snap.project.musicTempoList} fallback={<></>} >
             {(tempo, _) => (
               <Bleed key={tempo.uuid} w={"100%"} position={"absolute"} left={0} bottom={snap.project.getYPosition(tempo.position)} >
-                {/* ここの計算もっと練らないとな */}
+                {[...Array(100).keys()].map(i => (
+                  <Flex direction={"column"} key={i} w={"100%"} h={snap.project.getYPosition(tempo.getBarTemporalUnit())} borderBottom={"solid 1px white"} position={"absolute"} bottom={snap.project.getYPosition(tempo.getBarTemporalUnit().multiply(BigInt(i)))} >
+                    {[...Array(tempo.beat).keys()].map(i => <Bleed key={i} w={"100%"} flex={1} borderBottom={"solid 1px gray"} ></Bleed>)} 
+                  </Flex>
+                ))}
               </Bleed>
             )}
           </For>
