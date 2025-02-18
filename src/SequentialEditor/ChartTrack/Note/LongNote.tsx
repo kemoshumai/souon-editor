@@ -12,7 +12,7 @@ export default function LongNote(props: {
 
   const h = 12;
 
-  const left = (note.lane + 1) * w * 0.91;
+  const left = (note.lane + 1) * w * 0.915;
   const bottom = getYPosition(note.position) - h / 2;
 
   return (
