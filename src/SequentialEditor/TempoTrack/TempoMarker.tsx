@@ -23,7 +23,6 @@ export default function TempoMarker( props: { uuid: string} ) {
   }, [bpm]);
 
   const crop = (value: number, defaultValue: number) => {
-    console.log("crop:", value, "isNaN:", isNaN(value));
     if (value < 1) return 1;
     if (value > 999) return 999;
     if (isNaN(value)) return defaultValue;
