@@ -11,6 +11,10 @@ export default function Note( props: { uuid: string; chart: string, w: number } 
   const chart = snap.project.charts.find(c => c.uuid === props.chart)!;
   const note = chart.events.find(n => n.uuid === props.uuid)!;
 
+  const getYPosition = ({ seconds }: { seconds: number }) => snap.project.getYPosition({ seconds });
+
   if (note.type === ChartEventType.SingleNote)
-    return (<SingleNote note={note as SingleNoteEvent} w={props.w} />);
+    return (<SingleNote note={note as SingleNoteEvent} w={props.w} getYPosition={getYPosition} />);
+
+  return null;
 }

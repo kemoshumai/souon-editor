@@ -23,6 +23,7 @@ export default function ChartTrack(props: { uuid: string; }) {
     : mode == "Mirror" ? [0,1,0,1,0,1,0,0,1,0,1,0, 0,1,0,1,0,0,1,0,1,0,1,0]
     : [0,1,0,1,0,1,0,1,0,1,0,1, 0,1,0,1,0,1,0,1,0,1,0,1];
 
+  const laneWidth = 350 / 12;
     
   const header = <>
     <Stack gap={0}>
@@ -50,7 +51,7 @@ export default function ChartTrack(props: { uuid: string; }) {
   </>;
 
   return (
-    <Track uuid={props.uuid} header={header} w={350 / 12 * ( chart?.laneNumber ?? 1 )} >
+    <Track uuid={props.uuid} header={header} w={laneWidth * ( chart?.laneNumber ?? 1 )} >
       <Bleed position={"relative"} w={"100%"} h={"100%"} >
         <Flex position={"absolute"} top={0} h={"100%"} w={"100%"}>
           <Bleed borderLeft={"solid 1px"} borderRight={"solid 1px"} flex={1} bgColor={"red.800"}></Bleed>
@@ -74,8 +75,7 @@ export default function ChartTrack(props: { uuid: string; }) {
         <Bleed position={"absolute"} left={0} bottom={0} w={"100%"} h={"100%"} >
           <For each={chart?.events} fallback={<></>} >
             {(event, _)=> (
-              // TODO: wは一旦10で固定。本来はレーン幅を計算する。
-              <Note key={event.uuid} uuid={event.uuid} chart={chart!.uuid} w={10}  />
+              <Note key={event.uuid} uuid={event.uuid} chart={chart!.uuid} w={laneWidth}  />
             )}
           </For>
         </Bleed>
