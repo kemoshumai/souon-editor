@@ -4,6 +4,7 @@ import store from "../store/store";
 import { useState } from "react";
 import Track from "./Track";
 import { SegmentedControl } from "../components/ui/segmented-control";
+import TemporalPosition from "../store/temporalPosition";
 
 export default function ChartTrack(props: { uuid: string; }) {
 
@@ -20,8 +21,8 @@ export default function ChartTrack(props: { uuid: string; }) {
   const pattern = mode == "Order" ? [0,1,0,1,0,0,1,0,1,0,1,0, 0,1,0,1,0,0,1,0,1,0,1,0]
     : mode == "Mirror" ? [0,1,0,1,0,1,0,0,1,0,1,0, 0,1,0,1,0,0,1,0,1,0,1,0]
     : [0,1,0,1,0,1,0,1,0,1,0,1, 0,1,0,1,0,1,0,1,0,1,0,1];
-  
 
+    
   const header = <>
     <Stack gap={0}>
       <Bleed mr={10}>
@@ -58,13 +59,17 @@ export default function ChartTrack(props: { uuid: string; }) {
         </Flex>
         <Bleed position={"absolute"} left={0} bottom={0} w={"100%"} h={"100%"} >
           <For each={snap.project.musicTempoList} fallback={<></>} >
-            {(tempo, _) => (
+            {(tempo, _)=> (
               <Bleed key={tempo.uuid} w={"100%"} position={"absolute"} left={0} bottom={snap.project.getYPosition(tempo.position)} >
-                {[...Array(100).keys()].map(i => (
+                {[...Array(1+TemporalPosition.createWithSeconds(snap.project.musicLength).divide(tempo.getBarTemporalUnit().nanoseconds).asNumber()).keys()].map(i => (
                   <Flex direction={"column"} key={i} w={"100%"} h={snap.project.getYPosition(tempo.getBarTemporalUnit())} borderBottom={"solid 1px white"} position={"absolute"} bottom={snap.project.getYPosition(tempo.getBarTemporalUnit().multiply(BigInt(i)))} >
                     {[...Array(tempo.beat).keys()].map(i => <Bleed key={i} w={"100%"} flex={1} borderBottom={"solid 1px gray"} ></Bleed>)} 
                   </Flex>
                 ))}
+                {(() => {
+                  console.log(TemporalPosition.createWithSeconds(snap.project.musicLength).divide(tempo.getBarTemporalUnit().nanoseconds));
+                  return null;
+                })()}
               </Bleed>
             )}
           </For>

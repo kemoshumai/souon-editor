@@ -37,4 +37,8 @@ export default class TemporalPosition {
   static createWithSeconds(seconds: number): TemporalPosition {
     return new TemporalPosition(BigInt(seconds * 1_000_000_000));
   }
+
+  asNumber(): number {
+    return Number(this._nanoseconds);
+  }
 }
