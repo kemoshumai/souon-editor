@@ -2,6 +2,7 @@ import { Bleed, Center, For, Stack, Text } from "@chakra-ui/react";
 import { useSnapshot } from "valtio";
 import store from "../store/store";
 import Track from "./Track";
+import TempoMarker from "./TempoTrack/TempoMarker";
 export default function TempoTrack() {
 
   const snap = useSnapshot(store);
@@ -16,13 +17,7 @@ export default function TempoTrack() {
     <Track uuid={"TEMPO"} header={header} w={150} >
       <Bleed position={"relative"} w={"100%"} h={"100%"} >
         <For each={snap.project.musicTempoList} fallback={<Center><Text>テンポがありません</Text></Center>} >
-          {(tempo, index) => (
-            <Bleed key={index} borderBottom={"solid 1px white"} w={"100%"} h={50} position={"absolute"} left={0} bottom={snap.project.getYPosition(tempo.position)} >
-              <Center position={"absolute"} bottom={0} w={"100%"} >
-                <Text color={"gray.400"}>{tempo.tempo} BPM {tempo.beat} 拍</Text>
-              </Center>
-            </Bleed>
-          )}
+          {(tempo, _) => <TempoMarker key={tempo.uuid} uuid={tempo.uuid} />}
         </For>
       </Bleed>
     </Track>

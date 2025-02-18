@@ -66,10 +66,6 @@ export default function ChartTrack(props: { uuid: string; }) {
                     {[...Array(tempo.beat).keys()].map(i => <Bleed key={i} w={"100%"} flex={1} borderBottom={"solid 1px gray"} ></Bleed>)} 
                   </Flex>
                 ))}
-                {(() => {
-                  console.log(TemporalPosition.createWithSeconds(snap.project.musicLength).divide(tempo.getBarTemporalUnit().nanoseconds));
-                  return null;
-                })()}
               </Bleed>
             )}
           </For>
