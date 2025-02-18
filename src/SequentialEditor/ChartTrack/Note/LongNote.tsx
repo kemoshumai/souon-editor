@@ -1,12 +1,14 @@
 import { Bleed } from "@chakra-ui/react";
-import { SingleNoteEvent } from "../../../store/noteEvent";
+import { LongNoteEvent } from "../../../store/noteEvent";
 
-export default function SingleNote(props: {
-  note: SingleNoteEvent;
+export default function LongNote(props: {
+  note: LongNoteEvent;
   w: number;
   getYPosition: ({ seconds }: { seconds: number }) => number;
 }) {
   const { note, w, getYPosition } = props;
+
+  const length = getYPosition(note.endPosition) - getYPosition(note.position);
 
   const h = 12;
 
@@ -17,7 +19,7 @@ export default function SingleNote(props: {
     <Bleed
       position="absolute"
       w={w}
-      h={`${h}px`}
+      h={`${h + length}px`}
       backgroundColor="white"
       border="solid 1px gray"
       left={left}

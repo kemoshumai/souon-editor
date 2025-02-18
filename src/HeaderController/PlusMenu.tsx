@@ -8,7 +8,7 @@ import store from "../store/store";
 import Chart from "../store/chart";
 import { toaster } from "../components/ui/toaster";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { SingleNoteEvent } from "../store/noteEvent";
+import { LongNoteEvent, SingleNoteEvent } from "../store/noteEvent";
 import TemporalPosition from "../store/temporalPosition";
 
 enum PlusMenuSelection {
@@ -23,7 +23,10 @@ export default function PlusMenu() {
       uuid: crypto.randomUUID(),
       label: "新しい譜面",
       events: [
-        new SingleNoteEvent(crypto.randomUUID(), TemporalPosition.createWithSeconds(2), 0)
+        new SingleNoteEvent(crypto.randomUUID(), TemporalPosition.createWithSeconds(2), 0),
+        new SingleNoteEvent(crypto.randomUUID(), TemporalPosition.createWithSeconds(4), 0),
+        new LongNoteEvent(crypto.randomUUID(), TemporalPosition.createWithSeconds(2), 2, TemporalPosition.createWithSeconds(4)),
+        new LongNoteEvent(crypto.randomUUID(), TemporalPosition.createWithSeconds(2), 7, TemporalPosition.createWithSeconds(3)),
       ],
       laneNumber: 12
     };
