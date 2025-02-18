@@ -1,6 +1,8 @@
-import ChartEvent from "./chartEvent";
-import { LongNoteEvent, SingleNoteEvent } from "./noteEvent";
 
-type ChartEventType = ChartEvent | SingleNoteEvent | LongNoteEvent;
+// 判別可能なユニオン型
+enum ChartEventType {
+  SingleNote = "SingleNote",
+  LongNote = "LongNote",
+}
 
 export default ChartEventType;

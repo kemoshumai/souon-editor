@@ -1,12 +1,12 @@
-import ChartEventType from "./chartEventType";
+import ChartEvent from "./chartEvent";
 
 export default class Chart {
   uuid: string;
-  events: ChartEventType[];
+  events: ChartEvent[];
   laneNumber: number;
   label: string;
 
-  constructor(uuid: string, events: ChartEventType[], laneNumber: number, label: string) {
+  constructor(uuid: string, events: ChartEvent[], laneNumber: number, label: string) {
     this.uuid = uuid;
     this.events = events;
     this.laneNumber = laneNumber;

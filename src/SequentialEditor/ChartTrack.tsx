@@ -5,6 +5,7 @@ import { useState } from "react";
 import Track from "./Track";
 import { SegmentedControl } from "../components/ui/segmented-control";
 import TemporalPosition from "../store/temporalPosition";
+import Note from "./ChartTrack/Note";
 
 export default function ChartTrack(props: { uuid: string; }) {
 
@@ -67,6 +68,14 @@ export default function ChartTrack(props: { uuid: string; }) {
                   </Flex>
                 ))}
               </Bleed>
+            )}
+          </For>
+        </Bleed>
+        <Bleed position={"absolute"} left={0} bottom={0} w={"100%"} h={"100%"} >
+          <For each={chart?.events} fallback={<></>} >
+            {(event, _)=> (
+              // TODO: wは一旦10で固定。本来はレーン幅を計算する。
+              <Note key={event.uuid} uuid={event.uuid} chart={chart!.uuid} w={10}  />
             )}
           </For>
         </Bleed>
