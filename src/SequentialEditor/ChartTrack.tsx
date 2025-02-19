@@ -6,6 +6,7 @@ import Track from "./Track";
 import { SegmentedControl } from "../components/ui/segmented-control";
 import TemporalPosition from "../store/temporalPosition";
 import Note from "./ChartTrack/Note";
+import { SingleNoteEvent } from "../store/noteEvent";
 
 export default function ChartTrack(props: { uuid: string; }) {
 
@@ -24,7 +25,15 @@ export default function ChartTrack(props: { uuid: string; }) {
     : [0,1,0,1,0,1,0,1,0,1,0,1, 0,1,0,1,0,1,0,1,0,1,0,1];
 
   const laneWidth = 350 / 12;
-    
+
+  const handleOnClick = (e: React.MouseEvent) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const temporalPosition = snap.project.getTemporalPosition(rect.height - e.nativeEvent.offsetY);
+    const lane = Math.floor(e.nativeEvent.offsetX / rect.width * (laneNumber! + 1)) - 1;
+    if (0 <= lane && lane < (chart?.laneNumber ?? 0))
+      chartStore?.events.push(new SingleNoteEvent(crypto.randomUUID(), temporalPosition, lane));
+  }
+
   const header = <>
     <Stack gap={0}>
       <Bleed mr={10}>
@@ -52,7 +61,7 @@ export default function ChartTrack(props: { uuid: string; }) {
 
   return (
     <Track uuid={props.uuid} header={header} w={laneWidth * ( chart?.laneNumber ?? 1 )} >
-      <Bleed position={"relative"} w={"100%"} h={"100%"} >
+      <Bleed position={"relative"} w={"100%"} h={"100%"} onClick={handleOnClick} >
         <Flex position={"absolute"} top={0} h={"100%"} w={"100%"}>
           <Bleed borderLeft={"solid 1px"} borderRight={"solid 1px"} flex={1} bgColor={"red.800"}></Bleed>
           {[...Array(chart?.laneNumber ?? 0)].map((_, i) => <Bleed key={i} borderLeft={"solid 1px"} borderRight={"solid 1px"} flex={1} 

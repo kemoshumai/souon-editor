@@ -1,5 +1,6 @@
 import Chart from "./chart";
 import TempoEvent from "./tempoEvent";
+import TemporalPosition from "./temporalPosition";
 
 export default class Project {
   music: string;
@@ -25,6 +26,12 @@ export default class Project {
 
   getYPosition(position: { seconds: number }): number {
     return position.seconds * this.zoomScale * 100;
+  }
+
+  getTemporalPosition(y: number): TemporalPosition {
+    const seconds = y / this.zoomScale / 100;
+    const nanoseconds = BigInt(Math.floor(seconds * 1_000_000_000).toString());
+    return new TemporalPosition(nanoseconds);
   }
 
 }
