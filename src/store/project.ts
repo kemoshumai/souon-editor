@@ -88,6 +88,10 @@ export default class Project {
       
     }
 
+    if (plannedSnappingPosition.length === 0) {
+      return temporalPosition;
+    }
+
     const ns = temporalPosition.nanoseconds;
     const diffs = plannedSnappingPosition.map(p => Math.abs(Number(p.nanoseconds - ns)));
     const nearest = plannedSnappingPosition[diffs.indexOf(Math.min(...diffs))];
