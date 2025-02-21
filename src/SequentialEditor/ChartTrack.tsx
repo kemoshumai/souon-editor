@@ -28,9 +28,10 @@ export default function ChartTrack(props: { uuid: string; }) {
   const handleOnClick = (e: React.MouseEvent) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const temporalPosition = snap.project.getTemporalPosition(rect.height - e.nativeEvent.offsetY);
+    const snappedTemporalPosition = snap.project.getSnappedTemporalPosition(temporalPosition);
     const lane = Math.floor(e.nativeEvent.offsetX / rect.width * (laneNumber! + 1)) - 1;
     if (0 <= lane && lane < (chart?.laneNumber ?? 0))
-      chartStore?.events.push(new SingleNoteEvent(crypto.randomUUID(), temporalPosition, lane));
+      chartStore?.events.push(new SingleNoteEvent(crypto.randomUUID(), snappedTemporalPosition, lane));
   }
 
   const header = <>
@@ -81,7 +82,7 @@ export default function ChartTrack(props: { uuid: string; }) {
           </For>
         </Bleed>
         <Bleed position={"absolute"} left={0} bottom={0} w={"100%"} h={"100%"} >
-          <EventsView chart={chart!} laneWidth={laneWidth}  />
+          { chart && <EventsView chart={chart} laneWidth={laneWidth}  /> }
         </Bleed>
       </Bleed>
     </Track>
