@@ -4,8 +4,8 @@ import store from "../store/store";
 import { useState } from "react";
 import Track from "./Track";
 import { SegmentedControl } from "../components/ui/segmented-control";
-import Note from "./ChartTrack/Note";
 import { SingleNoteEvent } from "../store/noteEvent";
+import EventsView from "./ChartTrack/EventsView";
 
 export default function ChartTrack(props: { uuid: string; }) {
 
@@ -81,11 +81,7 @@ export default function ChartTrack(props: { uuid: string; }) {
           </For>
         </Bleed>
         <Bleed position={"absolute"} left={0} bottom={0} w={"100%"} h={"100%"} >
-          <For each={chart?.events} fallback={<></>} >
-            {(event, _)=> (
-              <Note key={event.uuid} uuid={event.uuid} chart={chart!.uuid} w={laneWidth}  />
-            )}
-          </For>
+          <EventsView chart={chart!} laneWidth={laneWidth}  />
         </Bleed>
       </Bleed>
     </Track>
