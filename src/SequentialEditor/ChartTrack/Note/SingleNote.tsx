@@ -20,8 +20,8 @@ export default function SingleNote(props: {
       h={`${h}px`}
       backgroundColor="white"
       border="solid 1px gray"
-      left={left}
-      bottom={bottom}
+      left={`${left}px`}
+      bottom={`${bottom}px`}
     />
   );
 }

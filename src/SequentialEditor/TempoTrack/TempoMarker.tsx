@@ -35,8 +35,6 @@ export default function TempoMarker( props: { uuid: string} ) {
     return value;
   }
 
-  console.log(tempo.uuid, snap.project.getTemporalPositionFromTempoEvent(tempo));
-
   return (<>
     <Bleed borderBottom={"solid 1px white"} w={"100%"} h={50} position={"absolute"} left={0} bottom={snap.project.getYPosition(snap.project.getTemporalPositionFromTempoEvent(tempo))} >
       <Stack position={"absolute"} bottom={0} w={"100%"} gap={0} >
