@@ -34,4 +34,21 @@ export default class Project {
     return new TemporalPosition(nanoseconds);
   }
 
+  getTemporalPositionFromTempoEvent(tempoEvent: TempoEvent): TemporalPosition {
+    const { uuid } = tempoEvent;
+    const tempoEvents = this.musicTempoList;
+    const currentTempoEventIndex = tempoEvents.findIndex(t => t.uuid === uuid);
+    if (currentTempoEventIndex === -1) {
+      throw new Error(`TempoEvent with uuid ${uuid} not found in musicTempoList`);
+    }
+    const previousTempoEvents = tempoEvents.slice(0, currentTempoEventIndex);
+
+    let sum = TemporalPosition.createWithSeconds(0);
+    for(const e of previousTempoEvents) {
+      sum = sum.add(e.getTemporalLength().nanoseconds);
+    }
+
+    return sum;
+  }
+
 }

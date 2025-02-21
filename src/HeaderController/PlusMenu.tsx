@@ -1,5 +1,5 @@
 import { Button, MenuContent, MenuItem, MenuRoot, MenuSelectionDetails, MenuTrigger } from "@chakra-ui/react";
-import { MdAddChart, MdMusicNote } from "react-icons/md";
+import { MdAddChart, MdMusicNote, MdSpeed } from "react-icons/md";
 import { PiPlus } from "react-icons/pi";
 import { open } from "@tauri-apps/plugin-dialog";
 import { copyFile } from "@tauri-apps/plugin-fs";
@@ -10,10 +10,12 @@ import { toaster } from "../components/ui/toaster";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { LongNoteEvent, SingleNoteEvent } from "../store/noteEvent";
 import TemporalPosition from "../store/temporalPosition";
+import TempoEvent from "../store/tempoEvent";
 
 enum PlusMenuSelection {
   SetMusicFile = "set_music_file",
   AddChart = "add_chart",
+  AddTempo = "add_tempo"
 }
 
 export default function PlusMenu() {
@@ -61,6 +63,11 @@ export default function PlusMenu() {
     }
   }
 
+  const AddTempo = () => {
+    const tempoEvent = TempoEvent.createWithRandomUUID(120, 4, 4);
+    store.project.musicTempoList.push(tempoEvent);
+  }
+
   const onSelect = (d: MenuSelectionDetails) => {
     const value = d.value;
 
@@ -71,6 +78,9 @@ export default function PlusMenu() {
       case PlusMenuSelection.AddChart:
         AddChart();
         break;
+      case PlusMenuSelection.AddTempo:
+        AddTempo();
+        break;
     }
   }
 
@@ -80,6 +90,7 @@ export default function PlusMenu() {
       <MenuContent position={"absolute"} zIndex={10} top={10}>
         <MenuItem value={PlusMenuSelection.SetMusicFile}><MdMusicNote />音楽ファイル読み込み</MenuItem>
         <MenuItem value={PlusMenuSelection.AddChart}><MdAddChart />譜面追加</MenuItem>
+        <MenuItem value={PlusMenuSelection.AddTempo}><MdSpeed />テンポ情報追加</MenuItem>
       </MenuContent>
     </MenuRoot>
   </>);

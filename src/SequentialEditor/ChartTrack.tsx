@@ -4,7 +4,6 @@ import store from "../store/store";
 import { useState } from "react";
 import Track from "./Track";
 import { SegmentedControl } from "../components/ui/segmented-control";
-import TemporalPosition from "../store/temporalPosition";
 import Note from "./ChartTrack/Note";
 import { SingleNoteEvent } from "../store/noteEvent";
 
@@ -71,10 +70,10 @@ export default function ChartTrack(props: { uuid: string; }) {
         <Bleed position={"absolute"} left={0} bottom={0} w={"100%"} h={"100%"} >
           <For each={snap.project.musicTempoList} fallback={<></>} >
             {(tempo, _)=> (
-              <Bleed key={tempo.uuid} w={"100%"} position={"absolute"} left={0} bottom={snap.project.getYPosition(tempo.position)} >
-                {[...Array(1+TemporalPosition.createWithSeconds(snap.project.musicLength).divide(tempo.getBarTemporalUnit().nanoseconds).asNumber()).keys()].map(i => (
+              <Bleed key={tempo.uuid} w={"100%"} position={"absolute"} left={0} bottom={snap.project.getYPosition(snap.project.getTemporalPositionFromTempoEvent(tempo))} >
+                {[...Array(tempo.length).keys()].map(i => (
                   <Flex direction={"column"} key={i} w={"100%"} h={snap.project.getYPosition(tempo.getBarTemporalUnit())} borderBottom={"solid 1px white"} position={"absolute"} bottom={snap.project.getYPosition(tempo.getBarTemporalUnit().multiply(BigInt(i)))} >
-                    {[...Array(tempo.beat).keys()].map(i => <Bleed key={i} w={"100%"} flex={1} borderBottom={"solid 1px gray"} ></Bleed>)} 
+                    {[...Array(tempo.beat).keys()].map(i => <Bleed key={i} w={"100%"} flex={1} borderBottom={"solid 1px gray"} borderTop={"solid 1px gray"} ></Bleed>)} 
                   </Flex>
                 ))}
               </Bleed>
