@@ -5,9 +5,10 @@ import ChartTrack from "./SequentialEditor/ChartTrack";
 import { closestCenter, DndContext, DragEndEvent, PointerSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { horizontalListSortingStrategy, SortableContext } from "@dnd-kit/sortable";
 import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import MusicTrack from "./SequentialEditor/MusicTrack";
 import TempoTrack from "./SequentialEditor/TempoTrack";
+import { useKeyPress } from "react-use";
 
 export default function SequentialEditor() {
 
@@ -35,12 +36,48 @@ export default function SequentialEditor() {
     
   };
 
+  const ctrl = useKeyPress("Control");
+
+  const zoom = (element: HTMLDivElement, delta: number, clientY: number) => {
+    
+    if(!ctrl[0]) return;
+
+    // scrollableの高さ
+    const height = element.getBoundingClientRect().height;
+
+    // マウスのscrollable内での位置
+    const y = clientY - element.getBoundingClientRect().top;
+
+    // 画面上のscrollableのマウスの上からの位置
+    const scrollableY = y - element.scrollTop;
+
+    // マウス位置から時間を取得
+    const temporalPosition = snap.project.getTemporalPosition(height - y);
+
+    // 拡大縮小
+    store.project.zoomScale = Math.max(0.01, store.project.zoomScale + delta * 0.0001);
+
+    // マウス位置を基準にスクロール
+    const newCoordinatePosition = store.project.getCoordinatePositionFromTemporalPosition(temporalPosition);
+
+    const newScrollTop = newCoordinatePosition - scrollableY;
+
+    element.scrollTop = newScrollTop;
+  }
+
+  const onWheel = (e: React.WheelEvent) => {
+    const delta = e.deltaY;
+    console.log(delta);
+    const element = e.currentTarget as HTMLDivElement;
+    zoom(element, delta, e.clientY);
+  }
+
   const fallback = <Center w={"100vw"} h={"100%"} >
     <Text fontSize={"xl"} color={"gray.400"} >表示する譜面がありません</Text>
   </Center>;
 
   return (
-    <Bleed flex={1} overflowX={"scroll"} overflowY={"scroll"} >
+    <Bleed flex={1} overflowX={"scroll"} overflowY={"scroll"} onWheel={onWheel} >
       <HStack minH={"100%"} >
         <DndContext
           sensors={sensors}
