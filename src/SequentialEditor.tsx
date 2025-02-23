@@ -5,7 +5,7 @@ import ChartTrack from "./SequentialEditor/ChartTrack";
 import { closestCenter, DndContext, DragEndEvent, PointerSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { horizontalListSortingStrategy, SortableContext } from "@dnd-kit/sortable";
 import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import MusicTrack from "./SequentialEditor/MusicTrack";
 import TempoTrack from "./SequentialEditor/TempoTrack";
 import { useKeyPress } from "react-use";
@@ -39,17 +39,12 @@ export default function SequentialEditor() {
   const ctrl = useKeyPress("Control");
 
   const zoom = (element: HTMLDivElement, delta: number, clientY: number) => {
-    
-    if(!ctrl[0]) return;
 
     // scrollableの高さ
     const height = element.getBoundingClientRect().height;
 
     // マウスのscrollable内での位置
-    const y = clientY - element.getBoundingClientRect().top;
-
-    // 画面上のscrollableのマウスの上からの位置
-    const scrollableY = y - element.scrollTop;
+    const y = clientY + element.scrollTop;
 
     // マウス位置から時間を取得
     const temporalPosition = snap.project.getTemporalPosition(height - y);
@@ -60,12 +55,14 @@ export default function SequentialEditor() {
     // マウス位置を基準にスクロール
     const newCoordinatePosition = store.project.getCoordinatePositionFromTemporalPosition(temporalPosition);
 
-    const newScrollTop = newCoordinatePosition - scrollableY;
+    const newScrollTop = newCoordinatePosition - clientY;
 
     element.scrollTop = newScrollTop;
   }
 
   const onWheel = (e: React.WheelEvent) => {
+    if(!ctrl[0]) return;
+    e.preventDefault();
     const delta = e.deltaY;
     console.log(delta);
     const element = e.currentTarget as HTMLDivElement;
