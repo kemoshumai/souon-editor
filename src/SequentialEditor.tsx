@@ -5,7 +5,7 @@ import ChartTrack from "./SequentialEditor/ChartTrack";
 import { closestCenter, DndContext, DragEndEvent, PointerSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { horizontalListSortingStrategy, SortableContext } from "@dnd-kit/sortable";
 import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import MusicTrack from "./SequentialEditor/MusicTrack";
 import TempoTrack from "./SequentialEditor/TempoTrack";
 import { useKeyPress } from "react-use";
@@ -57,7 +57,7 @@ export default function SequentialEditor() {
     const t_A = snap.project.getTemporalPosition(y_A_);
 
     // 拡大縮小
-    store.project.zoomScale = Math.max(0.01, store.project.zoomScale + delta * 0.0001);
+    store.project.zoomScale = Math.max(0.01, store.project.zoomScale + delta * -0.0005);
 
     const y_B_ = store.project.getCoordinatePositionFromTemporalPosition(t_A);
 
@@ -68,19 +68,32 @@ export default function SequentialEditor() {
     element.scrollTop = S_B;
   }
 
-  const onWheel = (e: React.WheelEvent) => {
+  const onWheel = (e: WheelEvent) => {
     if(!ctrl[0]) return;
+    e.preventDefault();
     const delta = e.deltaY;
     const element = e.currentTarget as HTMLDivElement;
     zoom(element, delta, e.clientY);
   }
+
+  const scrollable = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if(scrollable.current) {
+      scrollable.current.addEventListener("wheel", onWheel, {passive: false});
+    }
+    return () => {
+      if(scrollable.current) {
+        scrollable.current.removeEventListener("wheel", onWheel);
+      }
+    }
+  }, [scrollable.current, onWheel]);
 
   const fallback = <Center w={"100vw"} h={"100%"} >
     <Text fontSize={"xl"} color={"gray.400"} >表示する譜面がありません</Text>
   </Center>;
 
   return (
-    <Bleed flex={1} overflowX={"scroll"} overflowY={"scroll"} onWheel={onWheel} >
+    <Bleed flex={1} overflowX={"scroll"} overflowY={"scroll"} ref={scrollable} >
       <HStack minH={"100%"} >
         <DndContext
           sensors={sensors}
