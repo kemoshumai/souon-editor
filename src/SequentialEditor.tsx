@@ -58,9 +58,13 @@ export default function SequentialEditor() {
     zoom(element, delta, e.clientY);
   }
 
+  const lastWheelRef = useRef<number>(0);
+
   const scrollable = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if(scrollable.current) {
+      if (lastWheelRef.current !== 0 && Date.now() - lastWheelRef.current < 100) return;
+      lastWheelRef.current = Date.now();
       scrollable.current.addEventListener("wheel", onWheel, {passive: false});
     }
     return () => {
