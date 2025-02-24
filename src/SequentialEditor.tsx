@@ -40,31 +40,37 @@ export default function SequentialEditor() {
 
   const zoom = (element: HTMLDivElement, delta: number, clientY: number) => {
 
+    console.log(clientY);
+
+    const rect = element.getBoundingClientRect();
+
     // scrollableの高さ
-    const height = element.getBoundingClientRect().height;
+    const H = rect.height;
 
-    // マウスのscrollable内での位置
-    const y = clientY + element.scrollTop;
+    const S_A = element.scrollTop;
 
-    // マウス位置から時間を取得
-    const temporalPosition = snap.project.getTemporalPosition(height - y);
+    // scrollable要素内でのマウス位置
+    const y_A = clientY - rect.top + element.scrollTop;
+
+    const y_A_ = H - y_A;
+
+    const t_A = snap.project.getTemporalPosition(y_A_);
 
     // 拡大縮小
     store.project.zoomScale = Math.max(0.01, store.project.zoomScale + delta * 0.0001);
 
-    // マウス位置を基準にスクロール
-    const newCoordinatePosition = store.project.getCoordinatePositionFromTemporalPosition(temporalPosition);
+    const y_B_ = store.project.getCoordinatePositionFromTemporalPosition(t_A);
 
-    const newScrollTop = newCoordinatePosition - clientY;
+    const y_B = H - y_B_;
 
-    element.scrollTop = newScrollTop;
+    const S_B = y_B + S_A - y_A;
+
+    element.scrollTop = S_B;
   }
 
   const onWheel = (e: React.WheelEvent) => {
     if(!ctrl[0]) return;
-    e.preventDefault();
     const delta = e.deltaY;
-    console.log(delta);
     const element = e.currentTarget as HTMLDivElement;
     zoom(element, delta, e.clientY);
   }
