@@ -39,32 +39,15 @@ export default function SequentialEditor() {
   const ctrl = useKeyPress("Control");
 
   const zoom = (element: HTMLDivElement, delta: number, clientY: number) => {
-
-    console.log(clientY);
-
     const rect = element.getBoundingClientRect();
-
-    // scrollableの高さ
-    const H = rect.height;
-
     const S_A = element.scrollTop;
+    const y_A = clientY - rect.top + S_A;
+    const t_A = snap.project.getTemporalPosition(y_A);
 
-    // scrollable要素内でのマウス位置
-    const y_A = clientY - rect.top + element.scrollTop;
-
-    const y_A_ = H - y_A;
-
-    const t_A = snap.project.getTemporalPosition(y_A_);
-
-    // 拡大縮小
     store.project.zoomScale = Math.max(0.01, store.project.zoomScale + delta * -0.0005);
 
-    const y_B_ = store.project.getCoordinatePositionFromTemporalPosition(t_A);
-
-    const y_B = H - y_B_;
-
+    const y_B = store.project.getCoordinatePositionFromTemporalPosition(t_A);
     const S_B = y_B + S_A - y_A;
-
     element.scrollTop = S_B;
   }
 
