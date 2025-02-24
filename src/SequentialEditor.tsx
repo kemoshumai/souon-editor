@@ -40,15 +40,14 @@ export default function SequentialEditor() {
 
   const zoom = (element: HTMLDivElement, delta: number, clientY: number) => {
     const rect = element.getBoundingClientRect();
-    const S_A = element.scrollTop;
-    const y_A = clientY - rect.top + S_A;
-    const t_A = snap.project.getTemporalPosition(y_A);
+    const scrollTop = element.scrollTop;
+    const offsetY = clientY - rect.top + scrollTop;
+    const oldTimePos = snap.project.getTemporalPosition(offsetY);
 
-    store.project.zoomScale = Math.max(0.01, store.project.zoomScale + delta * -0.0005);
+    store.project.zoomScale = Math.max(0.01, store.project.zoomScale - delta * 0.0005);
 
-    const y_B = store.project.getCoordinatePositionFromTemporalPosition(t_A);
-    const S_B = y_B + S_A - y_A;
-    element.scrollTop = S_B;
+    const newOffsetY = store.project.getCoordinatePositionFromTemporalPosition(oldTimePos);
+    element.scrollTop = Math.max(0, scrollTop + newOffsetY - offsetY);
   }
 
   const onWheel = (e: WheelEvent) => {
