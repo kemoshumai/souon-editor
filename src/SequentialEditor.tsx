@@ -8,7 +8,7 @@ import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
 import { useEffect, useRef, useState } from "react";
 import MusicTrack from "./SequentialEditor/MusicTrack";
 import TempoTrack from "./SequentialEditor/TempoTrack";
-import { useKeyPress } from "react-use";
+import { toaster } from "./components/ui/toaster";
 
 export default function SequentialEditor() {
 
@@ -36,35 +36,40 @@ export default function SequentialEditor() {
     
   };
 
-  const ctrl = useKeyPress("Control");
-
   const zoom = (element: HTMLDivElement, delta: number, clientY: number) => {
+
+    toaster.create({
+      title: "ズームしました",
+      description: "マウスの位置を中心に拡大・縮小します",
+      type: "info"
+    });
+
     const rect = element.getBoundingClientRect();
     const scrollTop = element.scrollTop;
     const offsetY = clientY - rect.top + scrollTop;
     const oldTimePos = snap.project.getTemporalPosition(offsetY);
 
-    store.project.zoomScale = Math.max(0.01, store.project.zoomScale - delta * 0.0005);
+    store.project.zoomScale = Math.max(0.01, store.project.zoomScale - delta * 0.001);
 
     const newOffsetY = store.project.getCoordinatePositionFromTemporalPosition(oldTimePos);
     element.scrollTop = Math.max(0, scrollTop + newOffsetY - offsetY);
   }
 
+  const lastWheelRef = useRef<number>(0);
+
   const onWheel = (e: WheelEvent) => {
-    if(!ctrl[0]) return;
+    if (Date.now() - lastWheelRef.current < 500) return;
+    lastWheelRef.current = Date.now();
+    if(!e.ctrlKey) return;
     e.preventDefault();
     const delta = e.deltaY;
     const element = e.currentTarget as HTMLDivElement;
     zoom(element, delta, e.clientY);
   }
 
-  const lastWheelRef = useRef<number>(0);
-
   const scrollable = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if(scrollable.current) {
-      if (lastWheelRef.current !== 0 && Date.now() - lastWheelRef.current < 100) return;
-      lastWheelRef.current = Date.now();
       scrollable.current.addEventListener("wheel", onWheel, {passive: false});
     }
     return () => {
