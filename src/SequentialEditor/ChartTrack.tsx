@@ -1,4 +1,4 @@
-import { Bleed, Center, Editable, Flex, For, Stack, Text } from "@chakra-ui/react";
+import { Bleed, Center, Editable, Flex, Stack, Text } from "@chakra-ui/react";
 import { useSnapshot } from "valtio";
 import store from "../store/store";
 import { useState } from "react";
@@ -6,6 +6,8 @@ import Track from "./Track";
 import { SegmentedControl } from "../components/ui/segmented-control";
 import { SingleNoteEvent } from "../store/noteEvent";
 import EventsView from "./ChartTrack/EventsView";
+import ChartTrackBackground from "./ChartTrack/ChartTrackBackground";
+import Chart from "../store/chart";
 
 export default function ChartTrack(props: { uuid: string; }) {
 
@@ -62,26 +64,8 @@ export default function ChartTrack(props: { uuid: string; }) {
   return (
     <Track uuid={props.uuid} header={header} w={laneWidth * ( chart?.laneNumber ?? 1 )} >
       <Bleed position={"relative"} w={"100%"} h={"100%"} onClick={handleOnClick} >
-        <Flex position={"absolute"} top={0} h={"100%"} w={"100%"}>
-          <Bleed borderLeft={"solid 1px"} borderRight={"solid 1px"} flex={1} bgColor={"red.800"}></Bleed>
-          {[...Array(chart?.laneNumber ?? 0)].map((_, i) => <Bleed key={i} borderLeft={"solid 1px"} borderRight={"solid 1px"} flex={1} 
-            bgColor={["gray.800", "gray.700"][pattern[i%24]]}
-          ></Bleed>)}
-        </Flex>
         <Bleed position={"absolute"} left={0} bottom={0} w={"100%"} h={"100%"} >
-          <For each={snap.project.musicTempoList} fallback={<></>} >
-            {(tempo, _)=> (
-              <Bleed key={tempo.uuid} w={"100%"} position={"absolute"} left={0} bottom={snap.project.getYPosition(snap.project.getTemporalPositionFromTempoEvent(tempo))} >
-                {[...Array(tempo.length).keys()].map(i => (
-                  <Flex direction={"column"} key={i} w={"100%"} h={snap.project.getYPosition(tempo.getBarTemporalUnit())} borderBottom={"solid 1px white"} position={"absolute"} bottom={snap.project.getYPosition(tempo.getBarTemporalUnit().multiply(BigInt(i)))} >
-                    {[...Array(tempo.beat).keys()].map(i => <Flex key={i} w={"100%"} flex={1} borderBottom={"solid 1px gray"} borderTop={"solid 1px gray"} direction={"column"} >
-                      { snap.project.zoomScale < 3 ? <></> : [...Array(12).keys()].map(i => <Flex key={i} w={"100%"} flex={1} borderBottom={`solid 1px rgb(18, 166, 215)`} borderTop={"solid 1px rgb(18, 166, 215)"} ></Flex>) }
-                    </Flex>)} 
-                  </Flex>
-                ))}
-              </Bleed>
-            )}
-          </For>
+          <ChartTrackBackground chart={chart as Chart} pattern={pattern} />
         </Bleed>
         <Bleed position={"absolute"} left={0} bottom={0} w={"100%"} h={"100%"} >
           { chart && <EventsView chart={chart} laneWidth={laneWidth}  /> }

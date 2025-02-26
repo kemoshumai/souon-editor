@@ -58,7 +58,7 @@ export default function SequentialEditor() {
   const lastWheelRef = useRef<number>(0);
 
   const onWheel = (e: WheelEvent) => {
-    if (Date.now() - lastWheelRef.current < 500) return;
+    if (Date.now() - lastWheelRef.current < 100) return;
     lastWheelRef.current = Date.now();
     if(!e.ctrlKey) return;
     e.preventDefault();
