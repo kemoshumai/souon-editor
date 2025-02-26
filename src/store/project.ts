@@ -16,7 +16,7 @@ export default class Project {
     this.charts = charts;
 
     this.musicLength = 0;
-    this.zoomScale = 1.0;
+    this.zoomScale = 3.2;
     this.musicTempoList = musicTempoList;
   }
 
@@ -74,7 +74,7 @@ export default class Project {
         const position = basePosition.add(barTemporalUnit.multiply(BigInt(i)).nanoseconds);
 
         // 1小節を分割する回数を計算
-        const resolution = tempoEvent.beat;
+        const resolution = tempoEvent.beat * ( this.zoomScale < 3 ? 1 : 12 );
 
         // 1小節を分割した時間を計算
         const dividedTemporalUnit = barTemporalUnit.divide(BigInt(resolution));
