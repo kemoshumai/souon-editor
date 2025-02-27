@@ -54,7 +54,7 @@ export default function MusicTrack() {
 
   const header = <>
     <Stack>
-      <Center><Text>音声波形</Text></Center>
+      <Center><Text>波形</Text></Center>
     </Stack>
   </>;
 
