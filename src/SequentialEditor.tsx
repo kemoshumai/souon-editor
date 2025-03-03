@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from "react";
 import MusicTrack from "./SequentialEditor/MusicTrack";
 import TempoTrack from "./SequentialEditor/TempoTrack";
 import { toaster } from "./components/ui/toaster";
+import PlayingBarContainer from "./SequentialEditor/PlayingBarContainer";
 
 export default function SequentialEditor() {
 
@@ -84,7 +85,7 @@ export default function SequentialEditor() {
   </Center>;
 
   return (
-    <Bleed flex={1} overflowX={"scroll"} overflowY={"scroll"} ref={scrollable} >
+    <Bleed flex={1} overflowX={"scroll"} overflowY={"scroll"} ref={scrollable} position={"relative"} >
       <HStack minH={"100%"} >
         <DndContext
           sensors={sensors}
@@ -105,6 +106,7 @@ export default function SequentialEditor() {
           </SortableContext>
         </DndContext>
       </HStack>
+      <PlayingBarContainer />
     </Bleed>
   );
 }

@@ -9,6 +9,7 @@ export default class Project {
   name: string;
   charts: Chart[];
   musicTempoList: TempoEvent[];
+  playingPosition: TemporalPosition;
 
   constructor(music: string, name: string, charts: Chart[], musicTempoList: TempoEvent[]) {
     this.music = music;
@@ -18,6 +19,7 @@ export default class Project {
     this.musicLength = 0;
     this.zoomScale = 3.2;
     this.musicTempoList = musicTempoList;
+    this.playingPosition = TemporalPosition.createWithSeconds(2);
   }
 
   getHeight(): number {

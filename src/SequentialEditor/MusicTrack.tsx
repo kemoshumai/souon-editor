@@ -52,6 +52,13 @@ export default function MusicTrack() {
 
   }, [snap.project.music]);
 
+  const handleClick = (e: React.MouseEvent) => {
+    const height = e.currentTarget.clientHeight;
+    const mouseY = e.nativeEvent.offsetY;
+    const temporalPosition = snap.project.getTemporalPosition(height - mouseY);
+    store.project.playingPosition = temporalPosition;
+  };
+
   const header = <>
     <Stack>
       <Center><Text>波形</Text></Center>
@@ -60,15 +67,20 @@ export default function MusicTrack() {
 
   return (
     <Track uuid={"MUSIC"} header={header} w={100} >
-      <canvas width={100} style={{
-        position: "relative",
-        top: 0,
-        left: 0,
-        bottom: 0,
-        width: "100%",
-        height: "100%",
-        imageRendering: "pixelated",
-      }} ref={canvasRef} />
+      <canvas 
+        width={100} 
+        style={{
+          position: "relative",
+          top: 0,
+          left: 0,
+          bottom: 0,
+          width: "100%",
+          height: "100%",
+          imageRendering: "pixelated",
+        }}
+        ref={canvasRef}
+        onClick={handleClick}
+      />
     </Track>
   );
 }
