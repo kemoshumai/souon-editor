@@ -18,7 +18,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self' ipc: http://ipc.localhost; img-src 'self' asset: http://asset.localhost",
+      "csp": "default-src 'self' ipc: http://ipc.localhost; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com",
       "assetProtocol": {
         "enable": true,
         "scope": ["**"]
@@ -34,6 +34,22 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "windows": {
+      "allowDowngrades": true,
+      "certificateThumbprint": null,
+      "digestAlgorithm": null,
+      "nsis": null,
+      "signCommand": null,
+      "timestampUrl": null,
+      "tsp": false,
+      "webviewInstallMode": {
+        "silent": true,
+        "type": "downloadBootstrapper"
+      },
+      "wix": {
+        "language": ["en-US", "ja-JP"]
+      }
+    }
   }
 }
