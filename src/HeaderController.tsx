@@ -4,6 +4,7 @@ import { useSnapshot } from "valtio";
 import store from "./store/store";
 import { useState } from "react";
 import PlusMenu from "./HeaderController/PlusMenu";
+import TitleBanner from "./HeaderController/TitleBanner";
 
 export default function HeaderController() {
 
@@ -12,7 +13,8 @@ export default function HeaderController() {
   const [inputName, setInputName] = useState(snap.project.name);
 
   return (
-    <Stack w={"100vw"} gap={0}>
+    <Stack w={"100vw"} gap={0} position={"relative"}>
+      <TitleBanner />
       <HStack w={"100vw"}>
         <PlusMenu />
         <Button w="10" h="10"><PiPlay /></Button>
