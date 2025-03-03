@@ -78,12 +78,12 @@ export default function ChartTrackBackground(props: { chart: Chart, pattern: num
         ctx.fillStyle = "#fff";
         ctx.font = "12px sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText((i).toString(), laneWidth / 2 + 1, y-2);
+        ctx.fillText((i).toString(), laneWidth / 2 + 1, y-10);
 
       }
     }
 
-  }, [canvasRef.current, snap.project.musicTempoList, snap.project.zoomScale, chart.laneNumber, canvasRef.current?.clientWidth, pattern]);
+  }, [canvasRef.current, snap.project.musicTempoList, snap.project.zoomScale, chart.laneNumber, canvasRef.current?.clientWidth, pattern, snap.project.music]);
 
   return (<canvas ref={canvasRef} style={{
     position: "relative",
