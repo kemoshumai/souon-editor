@@ -43,14 +43,19 @@ export default function AudioSystem() {
 
   }, [snap.project.playingPosition]);
 
-  useKeyPressEvent(' ', () => {
+  useEffect(() => {
     if(!audioRef.current) return;
-    audioRef.current.currentTime = snap.project.playingPosition.seconds; 
-    if(audioRef.current.paused) {
+    if(snap.playing) {
       audioRef.current.play();
     } else {
       audioRef.current.pause();
     }
+  }, [snap.playing]);
+
+  useKeyPressEvent(' ', () => {
+    if(!audioRef.current) return;
+    audioRef.current.currentTime = snap.project.playingPosition.seconds; 
+    store.playing = !snap.playing;
   });
 
   const updatePlayingPosition = () => {

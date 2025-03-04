@@ -1,5 +1,5 @@
 import { Button, HStack, Input, Separator, Stack, Text } from "@chakra-ui/react";
-import { PiPlay } from "react-icons/pi";
+import { PiPause, PiPlay } from "react-icons/pi";
 import { useSnapshot } from "valtio";
 import store from "./store/store";
 import { useState } from "react";
@@ -17,7 +17,7 @@ export default function HeaderController() {
       <TitleBanner />
       <HStack w={"100vw"}>
         <PlusMenu />
-        <Button w="10" h="10"><PiPlay /></Button>
+        <Button w="10" h="10" onClick={_=>store.playing = !snap.playing}>{ snap.playing ? <PiPause /> :<PiPlay /> }</Button>
         <Input
           w={300}
           value={inputName}
