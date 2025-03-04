@@ -1,7 +1,7 @@
 import { Bleed, Center, Editable, Flex, Stack, Text } from "@chakra-ui/react";
 import { useSnapshot } from "valtio";
 import store from "../store/store";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Track from "./Track";
 import { SegmentedControl } from "../components/ui/segmented-control";
 import { SingleNoteEvent } from "../store/noteEvent";
@@ -28,12 +28,65 @@ export default function ChartTrack(props: { uuid: string; }) {
   const laneWidth = 350 / 12;
 
   const handleOnClick = (e: React.MouseEvent) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const temporalPosition = snap.project.getTemporalPosition(rect.height - e.nativeEvent.offsetY);
-    const snappedTemporalPosition = snap.project.getSnappedTemporalPosition(temporalPosition);
-    const lane = Math.floor(e.nativeEvent.offsetX / rect.width * (laneNumber! + 1)) - 1;
-    if (0 <= lane && lane < (chart?.laneNumber ?? 0))
-      chartStore?.events.push(new SingleNoteEvent(crypto.randomUUID(), snappedTemporalPosition, lane));
+
+    switch (e.button) {
+
+      // 左クリック
+      case 0: {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const temporalPosition = snap.project.getTemporalPosition(rect.height - e.nativeEvent.offsetY);
+        const snappedTemporalPosition = snap.project.getSnappedTemporalPosition(temporalPosition);
+        const lane = Math.floor(e.nativeEvent.offsetX / rect.width * (laneNumber! + 1)) - 1;
+        if (0 <= lane && lane < (chart?.laneNumber ?? 0))
+          chartStore?.events.push(new SingleNoteEvent(crypto.randomUUID(), snappedTemporalPosition, lane));
+        break;
+      }
+    }
+    
+  }
+
+
+  const previousMousePosition = useRef<{ x: number; y: number; } | null>(null);
+
+  const handleOnMouseMove = (e: React.MouseEvent) => {
+    if (e.buttons === 2) {
+      const x = e.nativeEvent.offsetX;
+      const y = e.nativeEvent.offsetY;
+      if (previousMousePosition.current) {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const height = rect.height;
+
+        const laneRange = [
+          Math.floor(previousMousePosition.current.x / laneWidth),
+          Math.floor(x / laneWidth),
+        ];
+        const temporalRange = [
+          snap.project.getTemporalPosition(height - previousMousePosition.current.y),
+          snap.project.getTemporalPosition(height - y)
+        ];
+
+        const sortedLaneRange = laneRange.sort((a, b) => a - b);
+        const sortedTemporalRange = temporalRange.sort((a, b) => a.subtract(b.nanoseconds).seconds);
+
+        if (!chartStore) return;
+        chartStore.events = chartStore.events.filter(ev => {
+          if ((ev as any).lane === undefined) return true;
+          const lane = (ev as any).lane as number + 1;
+          const temporalPosition = ev.position;
+          const isInner =
+            sortedLaneRange[0] <= lane &&
+            lane <= sortedLaneRange[1] &&
+            sortedTemporalRange[0].seconds <= temporalPosition.seconds &&
+            temporalPosition.seconds <= sortedTemporalRange[1].seconds;
+          return !isInner;
+        });
+      }
+      previousMousePosition.current = { x, y };
+    }
+  }
+
+  const handleOnMouseUp = () => {
+    previousMousePosition.current = null;
   }
 
   const header = <>
@@ -63,7 +116,7 @@ export default function ChartTrack(props: { uuid: string; }) {
 
   return (
     <Track uuid={props.uuid} header={header} w={laneWidth * ( (chart?.laneNumber ?? 1 ) + 1)} >
-      <Bleed position={"relative"} w={"100%"} h={"100%"} onClick={handleOnClick} >
+      <Bleed position={"relative"} w={"100%"} h={"100%"} onClick={handleOnClick} onContextMenu={e=>e.preventDefault()} onMouseMove={handleOnMouseMove} onMouseUp={handleOnMouseUp} >
         <Bleed position={"absolute"} left={0} bottom={0} w={"100%"} h={"100%"} >
           <ChartTrackBackground chart={chart as Chart} pattern={pattern} />
         </Bleed>
