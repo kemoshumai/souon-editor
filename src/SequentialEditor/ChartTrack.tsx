@@ -62,7 +62,7 @@ export default function ChartTrack(props: { uuid: string; }) {
   </>;
 
   return (
-    <Track uuid={props.uuid} header={header} w={laneWidth * ( chart?.laneNumber ?? 1 )} >
+    <Track uuid={props.uuid} header={header} w={laneWidth * ( (chart?.laneNumber ?? 1 ) + 1)} >
       <Bleed position={"relative"} w={"100%"} h={"100%"} onClick={handleOnClick} >
         <Bleed position={"absolute"} left={0} bottom={0} w={"100%"} h={"100%"} >
           <ChartTrackBackground chart={chart as Chart} pattern={pattern} />

@@ -15,7 +15,7 @@ export default function Track(props: { uuid: string; children: React.ReactNode; 
   const h = snap.project.getHeight();
 
   return (
-    <Bleed minH={"100vh"} h={`${100+h}px`} bgColor={"gray.800"} ref={setNodeRef} minW={props.w} w={props.w} {...attributes} opacity={isDragging ? 0.5 : 1.0} style={{
+    <Bleed minH={"100vh"} h={`${100+h}px`} bgColor={"gray.800"} ref={setNodeRef} minW={props.w+"px"} w={props.w+"px"} {...attributes} opacity={isDragging ? 0.5 : 1.0} style={{
       transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
       transition,
     }}>

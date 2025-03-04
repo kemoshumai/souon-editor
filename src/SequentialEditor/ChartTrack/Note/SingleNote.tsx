@@ -10,7 +10,7 @@ export default function SingleNote(props: {
 
   const h = 12;
 
-  const left = (note.lane + 1) * w * 0.918;
+  const left = (note.lane + 1) * w;
   const bottom = getYPosition(note.position) - h / 2;
 
   return (

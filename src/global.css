@@ -7,4 +7,5 @@ html, body {
   font-optical-sizing: auto;
   font-weight: 300;
   font-style: normal;
+  box-sizing: border-box;
 }
