@@ -15,7 +15,15 @@ export default function EventsView( props : { chart: { uuid: string }, laneWidth
   return (
     <For each={events} fallback={<></>} >
       {(event, _)=> (
-        <Note key={event.uuid} uuid={event.uuid} chart={chart.uuid} w={laneWidth}  />
+        (()=>{
+          if((event as any).lane !== undefined) {
+            if ((event as any).lane < 0 || (event as any).lane >= chart.laneNumber) {
+              return null;
+            }
+          }
+
+          return <Note key={event.uuid} uuid={event.uuid} chart={chart.uuid} w={laneWidth}  />
+        })()
       )}
     </For>
   );
