@@ -50,8 +50,9 @@ export default function ChartTrack(props: { uuid: string; }) {
 
   const handleOnMouseMove = (e: React.MouseEvent) => {
     if (e.buttons === 2) {
-      const x = e.nativeEvent.offsetX;
-      const y = e.nativeEvent.offsetY;
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = e.clientX - rect.x;
+      const y = e.clientY - rect.y;
       if (previousMousePosition.current) {
         const rect = e.currentTarget.getBoundingClientRect();
         const height = rect.height;
@@ -68,8 +69,7 @@ export default function ChartTrack(props: { uuid: string; }) {
         const sortedLaneRange = laneRange.sort((a, b) => a - b);
         const sortedTemporalRange = temporalRange.sort((a, b) => a.subtract(b.nanoseconds).seconds);
 
-        if (!chartStore) return;
-        chartStore.events = chartStore.events.filter(ev => {
+        chartStore!.events = chartStore!.events.filter(ev => {
           if ((ev as any).lane === undefined) return true;
           const lane = (ev as any).lane as number + 1;
           const temporalPosition = ev.position;
