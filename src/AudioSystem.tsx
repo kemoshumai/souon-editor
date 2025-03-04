@@ -35,8 +35,6 @@ export default function AudioSystem() {
 
     if(!audioRef.current) return;
 
-    console.log("audioRef.current.currentTime", audioRef.current.currentTime);
-
     if(audioRef.current.paused) {
       audioRef.current.currentTime = snap.project.playingPosition.seconds;
     }

@@ -90,9 +90,7 @@ export default function SequentialEditor() {
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
-          onDragStart={event => {console.log("onDragStart", event.active.data.current)}}
           onDragEnd={handleDragEnd}
-          onDragCancel={event => {console.log("onDragCancel", event.active.data.current)}}
           modifiers={[restrictToHorizontalAxis]}
         >
           <SortableContext items={items} strategy={horizontalListSortingStrategy} >
