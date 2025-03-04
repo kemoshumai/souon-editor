@@ -5,7 +5,7 @@ import ChartTrack from "./SequentialEditor/ChartTrack";
 import { closestCenter, DndContext, DragEndEvent, PointerSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { horizontalListSortingStrategy, SortableContext } from "@dnd-kit/sortable";
 import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import MusicTrack from "./SequentialEditor/MusicTrack";
 import TempoTrack from "./SequentialEditor/TempoTrack";
 import { toaster } from "./components/ui/toaster";
@@ -15,12 +15,10 @@ export default function SequentialEditor() {
 
   const snap = useSnapshot(store);
 
-  const [items, setItems] = useState<string[]>([]);
-
   const sensors = useSensors( useSensor(PointerSensor), useSensor(TouchSensor) );
 
   useEffect(() => {
-    setItems(["MUSIC", "TEMPO", ...snap.project.charts.map(c => c.uuid)]);
+    store.items = ["MUSIC", "TEMPO", ...snap.project.charts.map(c => c.uuid)];
   }, [snap.project.charts]);
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -28,12 +26,12 @@ export default function SequentialEditor() {
     if (!over) return;
     
     // itemsの順番を更新
-    const oldIndex = items.indexOf(active.id.toString());
-    const newIndex = items.indexOf(over.id.toString());
-    const newItems = [...items];
+    const oldIndex = snap.items.indexOf(active.id.toString());
+    const newIndex = snap.items.indexOf(over.id.toString());
+    const newItems = [...snap.items];
     newItems.splice(oldIndex, 1);
     newItems.splice(newIndex, 0, active.id.toString());
-    setItems(newItems);
+    store.items = newItems;
     
   };
 
@@ -93,8 +91,8 @@ export default function SequentialEditor() {
           onDragEnd={handleDragEnd}
           modifiers={[restrictToHorizontalAxis]}
         >
-          <SortableContext items={items} strategy={horizontalListSortingStrategy} >
-            <For each={items} fallback={fallback} >
+          <SortableContext items={[...snap.items]} strategy={horizontalListSortingStrategy} >
+            <For each={snap.items} fallback={fallback} >
               {(chart) => (
                 chart === "MUSIC" ? <MusicTrack key={"MUSIC"} /> :
                 chart === "TEMPO" ? <TempoTrack key={"TEMPO"} /> :
