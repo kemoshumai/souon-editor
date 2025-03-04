@@ -64,7 +64,7 @@ export default function PlusMenu() {
   }
 
   const AddTempo = () => {
-    const tempoEvent = TempoEvent.createWithRandomUUID(120, 4, 4);
+    const tempoEvent = TempoEvent.createWithRandomUUID(120, 4, 100);
     store.project.musicTempoList.push(tempoEvent);
   }
 
