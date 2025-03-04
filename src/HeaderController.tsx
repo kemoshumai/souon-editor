@@ -5,6 +5,7 @@ import store from "./store/store";
 import { useState } from "react";
 import PlusMenu from "./HeaderController/PlusMenu";
 import TitleBanner from "./HeaderController/TitleBanner";
+import FileMenu from "./HeaderController/FileMenu";
 
 export default function HeaderController() {
 
@@ -16,6 +17,7 @@ export default function HeaderController() {
     <Stack w={"100vw"} gap={0} position={"relative"}>
       <TitleBanner />
       <HStack w={"100vw"}>
+        <FileMenu />
         <PlusMenu />
         <Button w="10" h="10" onClick={_=>store.playing = !snap.playing}>{ snap.playing ? <PiPause /> :<PiPlay /> }</Button>
         <Input

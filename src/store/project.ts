@@ -101,4 +101,16 @@ export default class Project {
     return nearest;
   }
 
+  getSerialized(): string {
+    return JSON.stringify({
+      music: this.music,
+      name: this.name,
+      musicLength: this.musicLength,
+      zoomScale: this.zoomScale,
+      playingPosition: this.playingPosition.getSerialized(),
+      charts: this.charts.map(c => c.getSerialized()),
+      musicTempoList: this.musicTempoList.map(t => t.getSerialized())
+    });
+  }
+
 }
