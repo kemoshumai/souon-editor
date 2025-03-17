@@ -6,6 +6,7 @@ import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { toaster } from "../components/ui/toaster";
 import ChartEventType from "./chartEventType";
 import { LongNoteEvent, SingleNoteEvent } from "./noteEvent";
+import Lane from "./lane";
 
 export default class Project {
   music: string;
@@ -181,9 +182,9 @@ export default class Project {
     this.playingPosition = TemporalPosition.fromJSON(json.playingPosition);// TemporalPositionはstringなのでfromJSONで変換
     this.charts = json.charts.map((c: any) => new Chart(c.uuid, c.events.map((e: any)=>{
       if (e.type === ChartEventType.SingleNote) {
-        return new SingleNoteEvent(e.uuid, e.position, e.lane);
+        return new SingleNoteEvent(e.uuid, TemporalPosition.fromJSON(e.position), e.lane as Lane);
       } else if (e.type === ChartEventType.LongNote) {
-        return new LongNoteEvent(e.uuid, e.position, e.lane, e.endPosition);
+        return new LongNoteEvent(e.uuid, TemporalPosition.fromJSON(e.position), e.lane as Lane, TemporalPosition.fromJSON(e.endPosition));
       }
       throw new Error("Invalid ChartEventType");
     }), c.laneNumber, c.label));// クラスに戻す
