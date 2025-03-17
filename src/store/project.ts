@@ -4,6 +4,8 @@ import TempoEvent from "./tempoEvent";
 import TemporalPosition from "./temporalPosition";
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { toaster } from "../components/ui/toaster";
+import ChartEventType from "./chartEventType";
+import { LongNoteEvent, SingleNoteEvent } from "./noteEvent";
 
 export default class Project {
   music: string;
@@ -110,7 +112,17 @@ export default class Project {
     const blob = await data.blob();
     const buffer = await blob.arrayBuffer();
     const array = new Uint8Array(buffer);
-    const base64 = btoa(String.fromCharCode(...array));
+    function toBinaryString(u8Array: Uint8Array): string {
+        const chunkSize = 0x8000;
+        const c = [];
+        for (let i = 0; i < u8Array.length; i += chunkSize) {
+            c.push(String.fromCharCode(...u8Array.subarray(i, i + chunkSize)));
+        }
+        return c.join("");
+    }
+
+    const binaryString = toBinaryString(array);
+    const base64 = btoa(binaryString);
     const music = `data:audio/mp3;base64,${base64}`;
 
     return JSON.stringify({
@@ -160,13 +172,22 @@ export default class Project {
     const data = await readTextFile(path);
     const json = JSON.parse(data);
 
-    this.music = json.music;
-    this.name = json.name;
-    this.musicLength = json.musicLength;
-    this.zoomScale = json.zoomScale;
-    this.playingPosition = TemporalPosition.fromJSON(json.playingPosition);
-    this.charts = json.charts;
-    this.musicTempoList = json.musicTempoList;
+    console.log(json);
+
+    this.music = json.music;// 音声ファイルはそのままでOK
+    this.name = json.name;// プロジェクト名もそのままでOK
+    this.musicLength = json.musicLength;// 音声ファイルの長さもnumberなのでそのままでOK
+    this.zoomScale = json.zoomScale;// ズーム倍率もnumberなのでそのままでOK
+    this.playingPosition = TemporalPosition.fromJSON(json.playingPosition);// TemporalPositionはstringなのでfromJSONで変換
+    this.charts = json.charts.map((c: any) => new Chart(c.uuid, c.events.map((e: any)=>{
+      if (e.type === ChartEventType.SingleNote) {
+        return new SingleNoteEvent(e.uuid, e.position, e.lane);
+      } else if (e.type === ChartEventType.LongNote) {
+        return new LongNoteEvent(e.uuid, e.position, e.lane, e.endPosition);
+      }
+      throw new Error("Invalid ChartEventType");
+    }), c.laneNumber, c.label));// クラスに戻す
+    this.musicTempoList = json.musicTempoList.map((t: any) => new TempoEvent(t.uuid, t.tempo, t.beat, t.length));// クラスに戻す
 
     toaster.create({
       title: "ファイルを読み込みました",
