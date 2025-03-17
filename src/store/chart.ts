@@ -12,4 +12,13 @@ export default class Chart {
     this.laneNumber = laneNumber;
     this.label = label;
   }
+
+  getSerialized(): string {
+    return JSON.stringify({
+      uuid: this.uuid,
+      events: this.events.map(e => e.getSerialized()),
+      laneNumber: this.laneNumber,
+      label: this.label,
+    });
+  }
 }

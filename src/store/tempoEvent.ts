@@ -26,4 +26,13 @@ export default class TempoEvent {
     return this.getBarTemporalUnit().multiply(BigInt(this.length));
   }
 
+  getSerialized(): string {
+    return JSON.stringify({
+      uuid: this.uuid,
+      tempo: this.tempo,
+      beat: this.beat,
+      length: this.length,
+    });
+  }
+
 }

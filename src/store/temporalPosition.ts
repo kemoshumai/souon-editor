@@ -41,4 +41,8 @@ export default class TemporalPosition {
   asNumber(): number {
     return Number(this._nanoseconds);
   }
+
+  getSerialized(): string {
+    return this._nanoseconds.toString();
+  }
 }
