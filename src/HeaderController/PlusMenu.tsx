@@ -19,12 +19,7 @@ enum PlusMenuSelection {
 export default function PlusMenu() {
 
   const AddChart = () => {
-    const chart: Chart = {
-      uuid: crypto.randomUUID(),
-      label: "新しい譜面",
-      events: [],
-      laneNumber: 12
-    };
+    const chart = new Chart(crypto.randomUUID(), [], 12, "新しい譜面");
     store.project.charts.push(chart);
 
   };

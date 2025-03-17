@@ -17,11 +17,4 @@ export default class ChartEvent {
     return new ChartEvent(type, uuid, position);
   }
 
-  getSerialized(): string {
-    return JSON.stringify({
-      type: this.type,
-      uuid: this.uuid,
-      position: this.position.getSerialized(),
-    });
-  }
 }

@@ -45,4 +45,8 @@ export default class TemporalPosition {
   getSerialized(): string {
     return this._nanoseconds.toString();
   }
+
+  toJSON(): string {
+    return this.getSerialized();
+  }
 }

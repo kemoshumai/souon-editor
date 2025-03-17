@@ -108,8 +108,8 @@ export default class Project {
       musicLength: this.musicLength,
       zoomScale: this.zoomScale,
       playingPosition: this.playingPosition.getSerialized(),
-      charts: this.charts.map(c => c.getSerialized()),
-      musicTempoList: this.musicTempoList.map(t => t.getSerialized())
+      charts: this.charts,
+      musicTempoList: this.musicTempoList
     });
   }
 

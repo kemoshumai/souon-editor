@@ -11,15 +11,6 @@ export class SingleNoteEvent extends ChartEvent {
     this.lane = lane;
   }
 
-  getSerialized(): string {
-    return JSON.stringify({
-      type: this.type,
-      uuid: this.uuid,
-      position: this.position.getSerialized(),
-      lane: this.lane,
-    });
-  }
-
 }
 
 export class LongNoteEvent extends ChartEvent {
@@ -32,13 +23,4 @@ export class LongNoteEvent extends ChartEvent {
     this.endPosition = endPosition;
   }
 
-  getSerialized(): string {
-    return JSON.stringify({
-      type: this.type,
-      uuid: this.uuid,
-      position: this.position.getSerialized(),
-      lane: this.lane,
-      endPosition: this.endPosition.getSerialized(),
-    });
-  }
 }

@@ -15,6 +15,8 @@ enum FileMenuSelection {
 export default function FileMenu() {
 
   const saveFile = async () => {
+    if (!store.project) return;
+    
     const path = await save({
       filters: [
         {
@@ -26,7 +28,7 @@ export default function FileMenu() {
 
     if (!path) return;
 
-    await writeTextFile(path, store.project.getStringified() , { create: true });
+    await writeTextFile(path, store.project.getSerialized() , { create: true });
 
     toaster.create({
       title: "ファイルを保存しました",
