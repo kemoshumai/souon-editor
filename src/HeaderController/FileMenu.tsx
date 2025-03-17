@@ -2,9 +2,6 @@ import { Button, MenuContent, MenuItem, MenuRoot, MenuSelectionDetails, MenuTrig
 import { PiFile } from "react-icons/pi";
 import store from "../store/store";
 import Project from "../store/project";
-import { toaster } from "../components/ui/toaster";
-import { save } from "@tauri-apps/plugin-dialog";
-import { writeTextFile } from "@tauri-apps/plugin-fs";
 
 enum FileMenuSelection {
   NewFile = "new_file",
@@ -16,26 +13,13 @@ export default function FileMenu() {
 
   const saveFile = async () => {
     if (!store.project) return;
-    
-    const path = await save({
-      filters: [
-        {
-          name: "SOF",
-          extensions: ["sof"]
-        }
-      ]
-    });
-
-    if (!path) return;
-
-    await writeTextFile(path, store.project.getSerialized() , { create: true });
-
-    toaster.create({
-      title: "ファイルを保存しました",
-      description: "保存先：" + path,
-      type: "info"
-    });
+    store.project.saveToFile();
   };
+
+  const loadFile = async () => {
+    if (!store.project) return;
+    store.project.loadFromFile();
+  }
 
   const onSelect = (d: MenuSelectionDetails) => {
     const value = d.value;
@@ -46,11 +30,7 @@ export default function FileMenu() {
         break;
       }
       case FileMenuSelection.OpenFile: {
-        toaster.create({
-          title: "未実装",
-          description: "ファイルを開く機能は未実装です",
-          type: "error"
-        });
+        loadFile();
         break;
       }
       case FileMenuSelection.SaveFile: {

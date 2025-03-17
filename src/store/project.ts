@@ -1,6 +1,9 @@
+import { open, save } from "@tauri-apps/plugin-dialog";
 import Chart from "./chart";
 import TempoEvent from "./tempoEvent";
 import TemporalPosition from "./temporalPosition";
+import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
+import { toaster } from "../components/ui/toaster";
 
 export default class Project {
   music: string;
@@ -101,15 +104,74 @@ export default class Project {
     return nearest;
   }
 
-  getSerialized(): string {
+  async getSerialized(): Promise<string> {
+
+    const data = await fetch(this.music);
+    const blob = await data.blob();
+    const buffer = await blob.arrayBuffer();
+    const array = new Uint8Array(buffer);
+    const base64 = btoa(String.fromCharCode(...array));
+    const music = `data:audio/mp3;base64,${base64}`;
+
     return JSON.stringify({
-      music: this.music,
+      music: music,
       name: this.name,
       musicLength: this.musicLength,
       zoomScale: this.zoomScale,
       playingPosition: this.playingPosition.getSerialized(),
       charts: this.charts,
       musicTempoList: this.musicTempoList
+    });
+  }
+
+  async saveToFile() {
+    const path = await save({
+      filters: [
+        {
+          name: "SOF",
+          extensions: ["sof"]
+        }
+      ]
+    });
+
+    if (!path) return;
+
+    await writeTextFile(path, await this.getSerialized() , { create: true });
+
+    toaster.create({
+      title: "ファイルを保存しました",
+      description: "保存先：" + path,
+      type: "info"
+    });
+  }
+
+  async loadFromFile() {
+    const path = await open({
+      filters: [
+        {
+          name: "SOF",
+          extensions: ["sof"]
+        }
+      ]
+    });
+
+    if (!path) return;
+
+    const data = await readTextFile(path);
+    const json = JSON.parse(data);
+
+    this.music = json.music;
+    this.name = json.name;
+    this.musicLength = json.musicLength;
+    this.zoomScale = json.zoomScale;
+    this.playingPosition = TemporalPosition.fromJSON(json.playingPosition);
+    this.charts = json.charts;
+    this.musicTempoList = json.musicTempoList;
+
+    toaster.create({
+      title: "ファイルを読み込みました",
+      description: "読み込み元：" + path,
+      type: "info"
     });
   }
 

@@ -49,4 +49,8 @@ export default class TemporalPosition {
   toJSON(): string {
     return this.getSerialized();
   }
+
+  static fromJSON(json: string): TemporalPosition {
+    return new TemporalPosition(BigInt(json));
+  }
 }

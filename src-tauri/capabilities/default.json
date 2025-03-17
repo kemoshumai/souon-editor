@@ -13,6 +13,8 @@
     "fs:scope-applocaldata",
     "fs:allow-copy-file",
     "fs:write-all",
-    "fs:allow-applocaldata-write-recursive"
+    "fs:allow-applocaldata-write-recursive",
+    "fs:read-all",
+    "fs:allow-applocaldata-read-recursive"
   ]
 }
