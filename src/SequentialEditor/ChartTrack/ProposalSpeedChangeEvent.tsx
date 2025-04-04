@@ -23,29 +23,33 @@ export default function ProposalSpeedChangeEvent( props: { temporalPosition: Tem
     props.cancel(); // 作成が終わったらPopoverをキャンセル
   }
 
+  const popover = <Popover.Root open={true} onOpenChange={props.cancel} >
+  <Popover.Positioner position={"absolute"} left={0} top={0} />
+  <Popover.Content mt={2}>
+    <Popover.Body> 
+      <Popover.Title>
+        速度変化点作成
+      </Popover.Title>
+      <Slider.Root defaultValue={[1.0]} max={2.0} min={0} step={0.1} onValueChange={e => setSpeed(e.value[0])} >
+        <Slider.Label />
+        <Slider.ValueText textAlign={"center"} />
+        <Slider.Control>
+          <Slider.Track>
+            <Slider.Range />
+          </Slider.Track>
+          <Slider.Thumb index={0} />
+        </Slider.Control>
+      </Slider.Root>
+      <Button w={"100%"} mt={2} onClick={handleOnClick}>作成</Button>
+    </Popover.Body>
+  </Popover.Content>
+</Popover.Root>;
+
+  if ( props.temporalPosition === null ) return <></>;
+
   return (
     <Bleed position={"absolute"} left={0} bottom={y-2+"px"} w={"100%"} h={"2px"} bgColor={"green.500"} zIndex={100} pointerEvents={"none"} onClick={e => e.stopPropagation()} >
-      <Popover.Root open={props.temporalPosition !== null} onOpenChange={props.cancel} >
-        <Popover.Positioner position={"absolute"} left={0} top={0} />
-        <Popover.Content mt={2}>
-          <Popover.Body> 
-            <Popover.Title>
-              速度変化点作成
-            </Popover.Title>
-            <Slider.Root defaultValue={[1.0]} max={2.0} min={0} step={0.1} onValueChange={e => setSpeed(e.value[0])} >
-              <Slider.Label />
-              <Slider.ValueText textAlign={"center"} />
-              <Slider.Control>
-                <Slider.Track>
-                  <Slider.Range />
-                </Slider.Track>
-                <Slider.Thumb index={0} />
-              </Slider.Control>
-            </Slider.Root>
-            <Button w={"100%"} mt={2} onClick={handleOnClick}>作成</Button>
-          </Popover.Body>
-        </Popover.Content>
-      </Popover.Root>
+        { popover }
     </Bleed>
   )
 }
