@@ -8,6 +8,8 @@ import { SingleNoteEvent } from "../store/noteEvent";
 import EventsView from "./ChartTrack/EventsView";
 import ChartTrackBackground from "./ChartTrack/ChartTrackBackground";
 import Chart from "../store/chart";
+import TemporalPosition from "../store/temporalPosition";
+import ProposalSpeedChangeEvent from "./ChartTrack/ProposalSpeedChangeEvent";
 
 export default function ChartTrack(props: { uuid: string; }) {
 
@@ -18,6 +20,8 @@ export default function ChartTrack(props: { uuid: string; }) {
 
   const [label, setLabel] = useState(chart?.label);
   const [laneNumber, setLaneNumber] = useState(chart?.laneNumber);
+
+  const [proposalSpeedChangeEventTemporalPosition, setProposalSpeedChangeEventTemporalPosition] = useState<TemporalPosition | null>(null);
 
   const [mode, setMode] = useState<"Stripe" | "Order" | "Mirror">("Order");
 
@@ -39,6 +43,9 @@ export default function ChartTrack(props: { uuid: string; }) {
         const lane = Math.floor(e.nativeEvent.offsetX / rect.width * (laneNumber! + 1)) - 1;
         if (0 <= lane && lane < (chart?.laneNumber ?? 0))
           chartStore?.events.push(new SingleNoteEvent(crypto.randomUUID(), snappedTemporalPosition, lane));
+        if (lane == -1) {
+          setProposalSpeedChangeEventTemporalPosition(snappedTemporalPosition);
+        }
         break;
       }
     }
@@ -122,6 +129,7 @@ export default function ChartTrack(props: { uuid: string; }) {
         </Bleed>
         <Bleed position={"absolute"} left={0} bottom={0} w={"100%"} h={"100%"} >
           { chart && <EventsView chart={chart} laneWidth={laneWidth}  /> }
+          <ProposalSpeedChangeEvent temporalPosition={proposalSpeedChangeEventTemporalPosition} chart={chart?.uuid!} cancel={() => setProposalSpeedChangeEventTemporalPosition(null)} />
         </Bleed>
       </Bleed>
     </Track>
