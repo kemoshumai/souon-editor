@@ -56,6 +56,8 @@ jobs:
         id: tauri-build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: ${{ matrix.args }}
 
       - uses: actions/upload-artifact@v4
         with:
