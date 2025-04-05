@@ -7,6 +7,7 @@ import { toaster } from "../components/ui/toaster";
 import ChartEventType from "./chartEventType";
 import { LongNoteEvent, SingleNoteEvent } from "./noteEvent";
 import Lane from "./lane";
+import { SpeedChangeEvent } from "./speedChangeEvent";
 
 export default class Project {
   music: string;
@@ -185,6 +186,8 @@ export default class Project {
         return new SingleNoteEvent(e.uuid, TemporalPosition.fromJSON(e.position), e.lane as Lane);
       } else if (e.type === ChartEventType.LongNote) {
         return new LongNoteEvent(e.uuid, TemporalPosition.fromJSON(e.position), e.lane as Lane, TemporalPosition.fromJSON(e.endPosition));
+      } else if (e.type === ChartEventType.SpeedChange) {
+        return new SpeedChangeEvent(e.uuid, TemporalPosition.fromJSON(e.position), e.speed);
       }
       throw new Error("Invalid ChartEventType");
     }), c.laneNumber, c.label));// クラスに戻す
