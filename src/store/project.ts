@@ -125,7 +125,10 @@ export default class Project {
 
     const binaryString = toBinaryString(array);
     const base64 = btoa(binaryString);
-    const music = `data:audio/mp3;base64,${base64}`;
+    const mimeType = blob.type; // MIMEタイプを取得
+    const mimeTypeParts = mimeType.split("/");
+    const mimeTypeFull = mimeTypeParts.length > 1 ? mimeType : "application/octet-stream"; // MIMEタイプが存在しない場合はデフォルトを使用
+    const music = `data:${mimeTypeFull};base64,${base64}`; // MIMEタイプを追加
 
     return JSON.stringify({
       music: music,
