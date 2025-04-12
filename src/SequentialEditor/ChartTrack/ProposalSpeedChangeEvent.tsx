@@ -20,6 +20,7 @@ export default function ProposalSpeedChangeEvent( props: { temporalPosition: Tem
   const handleOnClick  = (e: React.MouseEvent) => {
     console.log("handleOnClick", e);
     chart.events.push( new SpeedChangeEvent(crypto.randomUUID(), props.temporalPosition!, speed) );
+    setSpeed(1.0); // スライダーを初期化
     props.cancel(); // 作成が終わったらPopoverをキャンセル
   }
 
@@ -30,7 +31,7 @@ export default function ProposalSpeedChangeEvent( props: { temporalPosition: Tem
       <Popover.Title>
         速度変化点作成
       </Popover.Title>
-      <Slider.Root defaultValue={[1.0]} max={2.0} min={0} step={0.1} onValueChange={e => setSpeed(e.value[0])} >
+      <Slider.Root value={[speed]} defaultValue={[1.0]} max={2.0} min={0} step={0.1} onValueChange={e => setSpeed(e.value[0])} >
         <Slider.Label />
         <Slider.ValueText textAlign={"center"} />
         <Slider.Control>
