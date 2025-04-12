@@ -16,6 +16,7 @@ export default function ChartTrackBackground(props: { chart: Chart, pattern: num
 
     if (!canvasRef.current) return;
     if (!canvas) return;
+    if (!chart) return;
 
     canvas.height = 60000;
     canvas.width = canvasRef.current.clientWidth;
@@ -83,7 +84,7 @@ export default function ChartTrackBackground(props: { chart: Chart, pattern: num
       }
     }
 
-  }, [canvasRef.current, snap.project.musicTempoList, snap.project.zoomScale, chart.laneNumber, canvasRef.current?.clientWidth, pattern, snap.project.music]);
+  }, [canvasRef.current, snap.project.musicTempoList, snap.project.zoomScale, chart?.laneNumber, canvasRef.current?.clientWidth, pattern, snap.project.music]);
 
   return (<canvas ref={canvasRef} style={{
     position: "relative",
