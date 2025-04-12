@@ -10,6 +10,7 @@ import MusicTrack from "./SequentialEditor/MusicTrack";
 import TempoTrack from "./SequentialEditor/TempoTrack";
 import { toaster } from "./components/ui/toaster";
 import PlayingBarContainer from "./SequentialEditor/PlayingBarContainer";
+import { scrollTo } from "./eventBus";
 
 export default function SequentialEditor() {
 
@@ -77,6 +78,14 @@ export default function SequentialEditor() {
       }
     }
   }, [scrollable.current, onWheel]);
+
+  // mittを使って、スクロール位置を同期する
+  scrollTo.on("pos", temporalPosition => {
+    if(scrollable.current) {
+      const y = store.project.getCoordinatePositionFromTemporalPosition(temporalPosition);
+      scrollable.current.scrollTop = y;
+    }
+  });
 
   const fallback = <Center w={"100vw"} h={"100%"} >
     <Text fontSize={"xl"} color={"gray.400"} >表示する譜面がありません</Text>

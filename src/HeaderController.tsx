@@ -6,6 +6,7 @@ import { useState } from "react";
 import PlusMenu from "./HeaderController/PlusMenu";
 import TitleBanner from "./HeaderController/TitleBanner";
 import FileMenu from "./HeaderController/FileMenu";
+import TopOrBottom from "./HeaderController/TopOrBottom";
 
 export default function HeaderController() {
 
@@ -20,6 +21,7 @@ export default function HeaderController() {
         <FileMenu />
         <PlusMenu />
         <Button w="10" h="10" onClick={_=>store.playing = !snap.playing}>{ snap.playing ? <PiPause /> :<PiPlay /> }</Button>
+        <TopOrBottom />
         <Input
           w={300}
           value={inputName}
