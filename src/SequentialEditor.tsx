@@ -10,7 +10,7 @@ import MusicTrack from "./SequentialEditor/MusicTrack";
 import TempoTrack from "./SequentialEditor/TempoTrack";
 import { toaster } from "./components/ui/toaster";
 import PlayingBarContainer from "./SequentialEditor/PlayingBarContainer";
-import { scrollTo } from "./eventBus";
+import { scrollTo, scrollToByPercent } from "./eventBus";
 
 export default function SequentialEditor() {
 
@@ -83,6 +83,12 @@ export default function SequentialEditor() {
   scrollTo.on("pos", temporalPosition => {
     if(scrollable.current) {
       const y = store.project.getCoordinatePositionFromTemporalPosition(temporalPosition);
+      scrollable.current.scrollTop = y;
+    }
+  });
+  scrollToByPercent.on("pos", percent => {
+    if(scrollable.current) {
+      const y = scrollable.current.scrollHeight * percent;
       scrollable.current.scrollTop = y;
     }
   });
