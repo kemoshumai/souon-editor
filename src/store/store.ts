@@ -5,12 +5,14 @@ interface Store {
   project: Project;
   playing: boolean;
   items: string[];// DndKitのSortableContext用
+  saved: boolean;// 保存されているかどうか
 }
 
 const store = proxy<Store>({
   project: new Project("", "Default Project", [], []),
   playing: false,
-  items: []
+  items: [],
+  saved: false,
 });
 
 export default store;
