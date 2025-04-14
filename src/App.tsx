@@ -4,6 +4,7 @@ import SequentialEditor from './SequentialEditor';
 import { Toaster } from './components/ui/toaster';
 import AudioSystem from './AudioSystem';
 import { useEffect } from 'react';
+import SaveSystem from './SaveSystem';
 
 function App() {
 
@@ -24,6 +25,7 @@ function App() {
     <Theme appearance='dark'>
       <Toaster />
       <AudioSystem />
+      <SaveSystem />
       <Flex h={"100vh"} w={"100vw"} direction={"column"} >
         <HStack w={"100vw"}>
           <HeaderController />

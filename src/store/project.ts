@@ -8,6 +8,7 @@ import ChartEventType from "./chartEventType";
 import { LongNoteEvent, SingleNoteEvent } from "./noteEvent";
 import Lane from "./lane";
 import { SpeedChangeEvent } from "./speedChangeEvent";
+import store from "./store";
 
 export default class Project {
   music: string;
@@ -155,6 +156,8 @@ export default class Project {
 
     await writeTextFile(path, await this.getSerialized() , { create: true });
 
+    store.saved = true;
+
     toaster.create({
       title: "ファイルを保存しました",
       description: "保存先：" + path,
@@ -195,6 +198,8 @@ export default class Project {
       throw new Error("Invalid ChartEventType");
     }), c.laneNumber, c.label));// クラスに戻す
     this.musicTempoList = json.musicTempoList.map((t: any) => new TempoEvent(t.uuid, t.tempo, t.beat, t.length));// クラスに戻す
+
+    store.saved = true;
 
     toaster.create({
       title: "ファイルを読み込みました",
