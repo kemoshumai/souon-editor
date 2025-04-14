@@ -2,6 +2,7 @@ import { Button, MenuContent, MenuItem, MenuRoot, MenuSelectionDetails, MenuTrig
 import { PiFile } from "react-icons/pi";
 import store from "../store/store";
 import Project from "../store/project";
+import { toaster } from "../components/ui/toaster";
 
 enum FileMenuSelection {
   NewFile = "new_file",
@@ -27,6 +28,9 @@ export default function FileMenu() {
     switch (value) {
       case FileMenuSelection.NewFile: {
         store.project = new Project("", "New Project", [], []);
+        store.saved = false;
+        store.filepath = "";
+        toaster.create({ title: "新規プロジェクトを作成しました", description: "新しいプロジェクトを作成しました", type: "info" });
         break;
       }
       case FileMenuSelection.OpenFile: {
