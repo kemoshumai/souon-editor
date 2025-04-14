@@ -1,4 +1,4 @@
-import { useSnapshot } from "valtio"
+import { subscribe, useSnapshot } from "valtio"
 import store from "./store/store"
 import { useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
@@ -10,7 +10,14 @@ export default function SaveSystem() {
 
   // プロジェクトが変更されたら保存フラグをfalseにする
   useEffect(() => {
-    store.saved = false;
+    const unsubscribe = subscribe(store.project, (ops) => {
+      console.log('変更内容(project):', ops);
+      store.saved = false;
+    });
+
+    return () => {
+      unsubscribe();
+    }
   }, [snap.project]);
 
   // プロジェクトの保存フラグに応じてタイトルを変更する
