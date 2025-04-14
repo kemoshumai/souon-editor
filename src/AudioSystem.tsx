@@ -58,6 +58,7 @@ export default function AudioSystem() {
 
   const updatePlayingPosition = () => {
     if(!audioRef.current) return;
+    if(snap.project.playingPosition.seconds === audioRef.current.currentTime) return;
     store.project.playingPosition = TemporalPosition.createWithSeconds(audioRef.current.currentTime);
   }
 
