@@ -30,7 +30,7 @@ export default function SaveSystem() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.code === "KeyS") {
         e.preventDefault();
-        store.project.saveToFile();
+        store.project.saveNewFileOrOverwrite();
       }
     };
 

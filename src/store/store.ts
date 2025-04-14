@@ -6,6 +6,7 @@ interface Store {
   playing: boolean;
   items: string[];// DndKitのSortableContext用
   saved: boolean;// 保存されているかどうか
+  filepath: string;// 保存先のファイルパス
 }
 
 const store = proxy<Store>({
@@ -13,6 +14,7 @@ const store = proxy<Store>({
   playing: false,
   items: [],
   saved: false,
+  filepath: "",
 });
 
 export default store;

@@ -157,6 +157,7 @@ export default class Project {
     await writeTextFile(path, await this.getSerialized() , { create: true });
 
     store.saved = true;
+    store.filepath = path;
 
     toaster.create({
       title: "ファイルを保存しました",
@@ -179,6 +180,8 @@ export default class Project {
 
     const data = await readTextFile(path);
     const json = JSON.parse(data);
+
+    store.filepath = path;
 
     console.log(json);
 
@@ -206,6 +209,30 @@ export default class Project {
       description: "読み込み元：" + path,
       type: "info"
     });
+  }
+
+  async overwriteToFile() {
+    const path = store.filepath;
+
+    if (!path) return;
+
+    await writeTextFile(path, await this.getSerialized() , { create: true });
+
+    store.saved = true;
+
+    toaster.create({
+      title: "ファイルを上書き保存しました",
+      description: "保存先：" + path,
+      type: "info"
+    });
+  }
+
+  saveNewFileOrOverwrite() {
+    if (store.filepath === "") {
+      this.saveToFile();
+    } else {
+      this.overwriteToFile();
+    }
   }
 
 }
