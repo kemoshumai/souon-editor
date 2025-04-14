@@ -8,14 +8,20 @@ enum FileMenuSelection {
   NewFile = "new_file",
   OpenFile = "open_file",
   SaveFile = "save_file",
+  SaveAsFile = "save_as_file"
 }
 
 export default function FileMenu() {
 
   const saveFile = async () => {
     if (!store.project) return;
-    store.project.saveToFile();
+    store.project.saveNewFileOrOverwrite();
   };
+
+  const saveAsFile = async () => {
+    if (!store.project) return;
+    store.project.saveToFile();
+  }
 
   const loadFile = async () => {
     if (!store.project) return;
@@ -41,6 +47,10 @@ export default function FileMenu() {
         saveFile();
         break;
       }
+      case FileMenuSelection.SaveAsFile: {
+        saveAsFile();
+        break;
+      }
     }
   }
 
@@ -51,6 +61,7 @@ export default function FileMenu() {
         <MenuItem value={FileMenuSelection.NewFile}>新規作成</MenuItem>
         <MenuItem value={FileMenuSelection.OpenFile}>開く</MenuItem>
         <MenuItem value={FileMenuSelection.SaveFile}>保存</MenuItem>
+        <MenuItem value={FileMenuSelection.SaveAsFile}>名前を付けて保存</MenuItem>
       </MenuContent>
     </MenuRoot>
   </>);
