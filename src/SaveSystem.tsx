@@ -25,6 +25,10 @@ export default function SaveSystem() {
     await invoke("set_title", { title: `総音エディタ - ${snap.project.name} ${snap.saved ? "" : "*"}` });
   }, [snap.saved, snap.project.name]);
 
+  useAsync(async () => {
+    await invoke("set_saved", { saved: snap.saved });
+  }, [snap.saved]);
+
   // ctrl + s で保存
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
