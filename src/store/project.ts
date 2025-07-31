@@ -9,6 +9,7 @@ import { LongNoteEvent, SingleNoteEvent } from "./noteEvent";
 import Lane from "./lane";
 import { SpeedChangeEvent } from "./speedChangeEvent";
 import store from "./store";
+import { secondsToNanosecondsBigInt, safeBigInt } from '../utils/bigintHelpers';
 
 export default class Project {
   music: string;
@@ -40,8 +41,7 @@ export default class Project {
 
   getTemporalPosition(y: number): TemporalPosition {
     const seconds = y / this.zoomScale / 100;
-    const nanoseconds = BigInt(Math.floor(seconds * 1_000_000_000).toString());
-    return new TemporalPosition(nanoseconds);
+    return new TemporalPosition(secondsToNanosecondsBigInt(seconds));
   }
 
   getTemporalPositionFromTempoEvent(tempoEvent: TempoEvent): TemporalPosition {
@@ -77,26 +77,24 @@ export default class Project {
       // 1小節の時間を取得
       const barTemporalUnit = tempoEvent.getBarTemporalUnit();
 
-      // スナップ位置追加を小節数ぶん繰り返す
-      for(let i = 0; i < tempoEvent.length; i++) {
+        // スナップ位置追加を小節数ぶん繰り返す
+        for(let i = 0; i < tempoEvent.length; i++) {
 
-        // 小節の始まる位置
-        const position = basePosition.add(barTemporalUnit.multiply(BigInt(i)).nanoseconds);
+          // 小節の始まる位置
+          const position = basePosition.add(barTemporalUnit.multiply(safeBigInt(i)).nanoseconds);
 
-        // 1小節を分割する回数を計算
-        const resolution = tempoEvent.beat * ( this.zoomScale < 3 ? 1 : 12 );
+          // 1小節を分割する回数を計算
+          const resolution = Math.floor(tempoEvent.beat) * ( this.zoomScale < 3 ? 1 : 12 );
 
-        // 1小節を分割した時間を計算
-        const dividedTemporalUnit = barTemporalUnit.divide(BigInt(resolution));
+          // 1小節を分割した時間を計算
+          const dividedTemporalUnit = barTemporalUnit.divide(safeBigInt(resolution));
 
-        // 分割した時間を分割数ぶん繰り返す
-        for(let j = 0; j < resolution; j++) {
-          const snappingPosition = position.add(dividedTemporalUnit.multiply(BigInt(j)).nanoseconds);
-          plannedSnappingPosition.push(snappingPosition);
-        }
-      }
-      
-    }
+          // 分割した時間を分割数ぶん繰り返す
+          for(let j = 0; j < resolution; j++) {
+            const snappingPosition = position.add(dividedTemporalUnit.multiply(safeBigInt(j)).nanoseconds);
+            plannedSnappingPosition.push(snappingPosition);
+          }
+        }    }
 
     if (plannedSnappingPosition.length === 0) {
       return temporalPosition;

@@ -1,4 +1,5 @@
 import TemporalPosition from "./temporalPosition";
+import { safeBigInt } from '../utils/bigintHelpers';
 
 export default class TempoEvent {
   uuid: string;
@@ -19,11 +20,11 @@ export default class TempoEvent {
   }
 
   getBarTemporalUnit(): TemporalPosition {
-    return TemporalPosition.createWithSeconds(60).divide(BigInt(this.tempo)).multiply(BigInt(this.beat));
+    return TemporalPosition.createWithSeconds(60).divide(safeBigInt(this.tempo)).multiply(safeBigInt(this.beat));
   }
 
   getTemporalLength(): TemporalPosition {
-    return this.getBarTemporalUnit().multiply(BigInt(this.length));
+    return this.getBarTemporalUnit().multiply(safeBigInt(this.length));
   }
 
 }

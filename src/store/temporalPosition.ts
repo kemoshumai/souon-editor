@@ -1,3 +1,5 @@
+import { secondsToNanosecondsBigInt } from '../utils/bigintHelpers';
+
 export default class TemporalPosition {
   private _nanoseconds: bigint;
 
@@ -35,7 +37,7 @@ export default class TemporalPosition {
   }
 
   static createWithSeconds(seconds: number): TemporalPosition {
-    return new TemporalPosition(BigInt(seconds * 1_000_000_000));
+    return new TemporalPosition(secondsToNanosecondsBigInt(seconds));
   }
 
   asNumber(): number {
