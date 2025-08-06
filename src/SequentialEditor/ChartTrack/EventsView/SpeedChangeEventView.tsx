@@ -21,7 +21,7 @@ export default function SpeedChangeEventView( props: { uuid: string; chart: stri
   }
 
   return (
-    <Bleed position={"absolute"} left={x+"px"} bottom={y-2+"px"} w={w+"px"} h={"2px"} bgColor={"green.500"} zIndex={1} onClick={e => e.stopPropagation()} >
+    <Bleed position={"absolute"} left={x+"px"} bottom={y-2+"px"} w={w+"px"} h={"2px"} bgColor={"green.500"} zIndex={10} onClick={e => e.stopPropagation()} >
       <Text fontSize={"xs"} color={"white"} textAlign={"center"} position={"absolute"} bottom={0} left={0} w={"100%"}>{event.speed}</Text>
       <Button size={"xs"} position={"absolute"} top={1} left={0} w={"100%"} h={"20px"} onClick={deleteMyself} >削除</Button>
     </Bleed>

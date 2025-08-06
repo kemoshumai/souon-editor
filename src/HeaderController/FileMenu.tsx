@@ -57,7 +57,7 @@ export default function FileMenu() {
   return (<>
     <MenuRoot onSelect={onSelect} >
       <MenuTrigger as={Button} w="10" h="10"><PiFile /></MenuTrigger>
-      <MenuContent position={"absolute"} zIndex={10} top={10}>
+      <MenuContent position={"absolute"} zIndex={100} top={10}>
         <MenuItem value={FileMenuSelection.NewFile}>新規作成</MenuItem>
         <MenuItem value={FileMenuSelection.OpenFile}>開く</MenuItem>
         <MenuItem value={FileMenuSelection.SaveFile}>保存</MenuItem>

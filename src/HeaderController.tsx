@@ -7,6 +7,7 @@ import PlusMenu from "./HeaderController/PlusMenu";
 import TitleBanner from "./HeaderController/TitleBanner";
 import FileMenu from "./HeaderController/FileMenu";
 import TopOrBottom from "./HeaderController/TopOrBottom";
+import SettingsMenu from "./HeaderController/SettingsMenu";
 
 export default function HeaderController() {
 
@@ -15,13 +16,14 @@ export default function HeaderController() {
   const [inputName, setInputName] = useState(snap.project.name);
 
   return (
-    <Stack w={"100vw"} gap={0} position={"relative"}>
+    <Stack w={"100vw"} gap={0} position={"relative"} zIndex={2}>
       <TitleBanner />
       <HStack w={"100vw"}>
         <FileMenu />
         <PlusMenu />
         <Button w="10" h="10" onClick={_=>store.playing = !snap.playing}>{ snap.playing ? <PiPause /> :<PiPlay /> }</Button>
         <TopOrBottom />
+        <SettingsMenu />
         <Input
           w={300}
           value={inputName}

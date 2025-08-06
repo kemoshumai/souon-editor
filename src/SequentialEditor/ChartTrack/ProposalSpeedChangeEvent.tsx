@@ -49,7 +49,7 @@ export default function ProposalSpeedChangeEvent( props: { temporalPosition: Tem
   if ( props.temporalPosition === null ) return <></>;
 
   return (
-    <Bleed position={"absolute"} left={0} bottom={y-2+"px"} w={"100%"} h={"2px"} bgColor={"green.500"} zIndex={100} pointerEvents={"none"} onClick={e => e.stopPropagation()} >
+    <Bleed position={"absolute"} left={0} bottom={y-2+"px"} w={"100%"} h={"2px"} bgColor={"green.500"} zIndex={1000} pointerEvents={"none"} onClick={e => e.stopPropagation()} >
         { popover }
     </Bleed>
   )

@@ -5,6 +5,7 @@ import { Toaster } from './components/ui/toaster';
 import AudioSystem from './AudioSystem';
 import { useEffect } from 'react';
 import SaveSystem from './SaveSystem';
+import SplashScreen from './SplashScreen';
 
 function App() {
 
@@ -32,6 +33,7 @@ function App() {
         </HStack>
         <SequentialEditor />
       </Flex>
+      <SplashScreen />
     </Theme>
   </>);
 }

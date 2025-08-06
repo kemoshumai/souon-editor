@@ -11,6 +11,9 @@ import TempoTrack from "./SequentialEditor/TempoTrack";
 import { toaster } from "./components/ui/toaster";
 import PlayingBarContainer from "./SequentialEditor/PlayingBarContainer";
 import { scrollTo, scrollToByPercent } from "./eventBus";
+import { useAsync } from "react-use";
+import { convertFileSrc } from "@tauri-apps/api/core";
+import Background from "./Background";
 
 export default function SequentialEditor() {
 
@@ -97,27 +100,38 @@ export default function SequentialEditor() {
     <Text fontSize={"xl"} color={"gray.400"} >表示する譜面がありません</Text>
   </Center>;
 
+  
+  const backgroundImage = useAsync(async () => {
+    if (snap.userSettings.background) {
+      return convertFileSrc(snap.userSettings.background);
+    }
+    return "";
+  }, [snap.userSettings.background]);
+
   return (
-    <Bleed flex={1} overflowX={"scroll"} overflowY={"scroll"} ref={scrollable} position={"relative"} >
-      <HStack minH={"100%"} >
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-          modifiers={[restrictToHorizontalAxis]}
-        >
-          <SortableContext items={[...snap.items]} strategy={horizontalListSortingStrategy} >
-            <For each={snap.items} fallback={fallback} >
-              {(chart) => (
-                chart === "MUSIC" ? <MusicTrack key={"MUSIC"} /> :
-                chart === "TEMPO" ? <TempoTrack key={"TEMPO"} /> :
-                <ChartTrack key={chart} uuid={chart} />
-              )}
-            </For>
-          </SortableContext>
-        </DndContext>
-      </HStack>
-      <PlayingBarContainer />
-    </Bleed>
+    <>
+      <Background />
+      <Bleed flex={1} overflowX={"scroll"} overflowY={"scroll"} ref={scrollable} position={"relative"} background={"transparent"} >
+        <HStack minH={"100%"} >
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+            modifiers={[restrictToHorizontalAxis]}
+          >
+            <SortableContext items={[...snap.items]} strategy={horizontalListSortingStrategy} >
+              <For each={snap.items} fallback={fallback} >
+                {(chart) => (
+                  chart === "MUSIC" ? <MusicTrack key={"MUSIC"} /> :
+                  chart === "TEMPO" ? <TempoTrack key={"TEMPO"} /> :
+                  <ChartTrack key={chart} uuid={chart} />
+                )}
+              </For>
+            </SortableContext>
+          </DndContext>
+        </HStack>
+        <PlayingBarContainer />
+      </Bleed>
+    </>
   );
 }

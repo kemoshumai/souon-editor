@@ -75,7 +75,7 @@ export default function PlusMenu() {
   return (<>
     <MenuRoot onSelect={onSelect} >
       <MenuTrigger as={Button} w="10" h="10"><PiPlus /></MenuTrigger>
-      <MenuContent position={"absolute"} zIndex={10} top={10}>
+      <MenuContent position={"absolute"} zIndex={100} top={10}>
         <MenuItem value={PlusMenuSelection.SetMusicFile}><MdMusicNote />音楽ファイル読み込み</MenuItem>
         <MenuItem value={PlusMenuSelection.AddChart}><MdAddChart />譜面追加</MenuItem>
         <MenuItem value={PlusMenuSelection.AddTempo}><MdSpeed />テンポ情報追加</MenuItem>
