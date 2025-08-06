@@ -18,18 +18,20 @@ export default function Background() {
   return (
     <>
       {backgroundImage.value && (
-        <Bleed
-          position="fixed"
-          top={0}
-          left={0}
-          w={"100vw"}
-          h={"100vh"}
-          objectFit="cover"
-          filter="blur(8px) brightness(0.7)"
-          backgroundImage={`url('${backgroundImage.value}')`}
-          zIndex={0}
-          overflow={"hidden"}
-        />
+      <Bleed
+        position="fixed"
+        top={0}
+        left={0}
+        w={"100vw"}
+        h={"100vh"}
+        filter="blur(8px) brightness(0.7)"
+        backgroundImage={`url('${backgroundImage.value}')`}
+        backgroundSize="cover"
+        backgroundPosition="center"
+        backgroundRepeat="no-repeat"
+        zIndex={0}
+        overflow={"hidden"}
+      />
       )}
     </>
   );
