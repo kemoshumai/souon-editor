@@ -9,6 +9,8 @@ import { toaster } from "../components/ui/toaster";
 
 enum PlusMenuSelection {
   SetBackground = "set_background",
+  SetBackgroundBlur = "set_background_blur",
+  ResetBackground = "reset_background"
 }
 
 export default function SettingsMenu() {
@@ -44,9 +46,38 @@ export default function SettingsMenu() {
       }
     }
 
+    const SetBackgroundBlur = async () => {
+      store.userSettings.backgroundBlur = !store.userSettings.backgroundBlur;
+      await store.userSettings.save();
+      toaster.create({
+        title: "背景のぼかし設定を変更しました",
+        description: `背景のぼかしは${store.userSettings.backgroundBlur ? "有効" : "無効"}です`,
+        type: "info"
+      });
+    }
+
+    const ResetBackground = async () => {
+      store.userSettings.background = "";
+      store.userSettings.backgroundBlur = false;
+      await store.userSettings.save();
+      toaster.create({
+        title: "背景設定をリセットしました",
+        description: "背景画像とぼかし設定を初期化しました",
+        type: "info"
+      });
+    }
+
     switch (value) {
       case PlusMenuSelection.SetBackground:
         SetBackground();
+        break;
+
+      case PlusMenuSelection.SetBackgroundBlur:
+        SetBackgroundBlur();
+        break;
+
+      case PlusMenuSelection.ResetBackground:
+        ResetBackground();
         break;
     }
   }
@@ -56,6 +87,8 @@ export default function SettingsMenu() {
       <MenuTrigger as={Button} w="10" h="10"><PiGear /></MenuTrigger>
       <MenuContent position={"absolute"} zIndex={100} top={10} >
         <MenuItem value={PlusMenuSelection.SetBackground}><MdMusicNote />背景画像設定</MenuItem>
+        <MenuItem value={PlusMenuSelection.SetBackgroundBlur}>背景のぼかし設定</MenuItem>
+        <MenuItem value={PlusMenuSelection.ResetBackground}>背景設定をリセット</MenuItem>
       </MenuContent>
     </MenuRoot>
   </>);

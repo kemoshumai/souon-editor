@@ -24,7 +24,7 @@ export default function Background() {
         left={0}
         w={"100vw"}
         h={"100vh"}
-        filter="blur(8px) brightness(0.7)"
+        filter={snap.userSettings.backgroundBlur ? "blur(8px) brightness(0.7)" : "none"}
         backgroundImage={`url('${backgroundImage.value}')`}
         backgroundSize="cover"
         backgroundPosition="center"
