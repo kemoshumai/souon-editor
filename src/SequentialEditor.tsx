@@ -11,8 +11,6 @@ import TempoTrack from "./SequentialEditor/TempoTrack";
 import { toaster } from "./components/ui/toaster";
 import PlayingBarContainer from "./SequentialEditor/PlayingBarContainer";
 import { scrollTo, scrollToByPercent } from "./eventBus";
-import { useAsync } from "react-use";
-import { convertFileSrc } from "@tauri-apps/api/core";
 import Background from "./Background";
 
 export default function SequentialEditor() {
@@ -99,14 +97,6 @@ export default function SequentialEditor() {
   const fallback = <Center w={"100vw"} h={"100%"} >
     <Text fontSize={"xl"} color={"gray.400"} >表示する譜面がありません</Text>
   </Center>;
-
-  
-  const backgroundImage = useAsync(async () => {
-    if (snap.userSettings.background) {
-      return convertFileSrc(snap.userSettings.background);
-    }
-    return "";
-  }, [snap.userSettings.background]);
 
   return (
     <>
