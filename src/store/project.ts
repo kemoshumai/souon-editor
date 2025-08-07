@@ -233,4 +233,29 @@ export default class Project {
     }
   }
 
+  moveTempoEventUp(uuid: string) {
+    const index = this.musicTempoList.findIndex(t => t.uuid === uuid);
+    if (index < this.musicTempoList.length - 1 && index !== -1) {
+      const tempoEvent = this.musicTempoList[index];
+      this.musicTempoList.splice(index, 1);
+      this.musicTempoList.splice(index + 1, 0, tempoEvent);
+    }
+  }
+
+  moveTempoEventDown(uuid: string) {
+    const index = this.musicTempoList.findIndex(t => t.uuid === uuid);
+    if (index > 0) {
+      const tempoEvent = this.musicTempoList[index];
+      this.musicTempoList.splice(index, 1);
+      this.musicTempoList.splice(index - 1, 0, tempoEvent);
+    }
+  }
+
+  deleteTempoEvent(uuid: string) {
+    const index = this.musicTempoList.findIndex(t => t.uuid === uuid);
+    if (index !== -1) {
+      this.musicTempoList.splice(index, 1);
+    }
+  }
+
 }
