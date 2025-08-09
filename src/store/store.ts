@@ -10,6 +10,8 @@ interface Store {
   filepath: string;// 保存先のファイルパス
   userSettings: UserSettings;
   isUserSettingsLoaded: boolean; // ユーザー設定がロードされたかどうか
+  isPythonEnvReady: boolean; // Pythonのセットアップが完了したかどうか
+  splashScreenStack: string[]; // スプラッシュスクリーンのスタック
 }
 
 const store = proxy<Store>({
@@ -19,7 +21,9 @@ const store = proxy<Store>({
   saved: false,
   filepath: "",
   userSettings: new UserSettings(), // ユーザー設定をロード、なければ新規作成
-  isUserSettingsLoaded: false
+  isUserSettingsLoaded: false,
+  isPythonEnvReady: false,
+  splashScreenStack: []
 });
 
 (async () => {

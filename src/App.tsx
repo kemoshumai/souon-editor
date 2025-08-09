@@ -6,6 +6,7 @@ import AudioSystem from './AudioSystem';
 import { useEffect } from 'react';
 import SaveSystem from './SaveSystem';
 import SplashScreen from './SplashScreen';
+import PythonEnv from './PythonEnv';
 
 function App() {
 
@@ -33,6 +34,7 @@ function App() {
         </HStack>
         <SequentialEditor />
       </Flex>
+      <PythonEnv />
       <SplashScreen />
     </Theme>
   </>);

@@ -5,9 +5,9 @@ import { Provider } from "./components/ui/provider";
 import "./global.css";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-  <React.StrictMode>
+  // <React.StrictMode>
     <Provider>
       <App />
     </Provider>
-  </React.StrictMode>,
+  // </React.StrictMode>,
 );
