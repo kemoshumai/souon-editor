@@ -28,4 +28,5 @@ tauri-plugin-shell = "2.2.0"
 base64 = "0.22.1"
 hound = "3.5.1"
 vorbis-encoder = "0.1.4"
-
+tauri-plugin-log = "2"
+log = "0.4"
