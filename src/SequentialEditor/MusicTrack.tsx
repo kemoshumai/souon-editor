@@ -1,4 +1,4 @@
-import { Center, Stack, Text } from "@chakra-ui/react";
+import { Button, Center, HStack, Stack, Text, VStack } from "@chakra-ui/react";
 import { useSnapshot } from "valtio";
 import store from "../store/store";
 import Track from "./Track";
@@ -62,6 +62,17 @@ export default function MusicTrack() {
   const header = <>
     <Stack>
       <Center><Text>波形</Text></Center>
+      <VStack>
+        {/* store.project.enabledStemsをトグルするボタン */}
+        <HStack>
+          { snap.project.stems.bass && <Button size="2xs" onClick={() => { store.enabledStems.bass = !store.enabledStems.bass; }} bgColor={snap.enabledStems.bass ? "blue.300" : "gray.500"}>B</Button>}
+          { snap.project.stems.drums && <Button size="2xs" onClick={() => { store.enabledStems.drums = !store.enabledStems.drums; }} bgColor={snap.enabledStems.drums ? "blue.300" : "gray.500"}>D</Button>}
+        </HStack>
+        <HStack>
+          { snap.project.stems.other && <Button size="2xs" onClick={() => { store.enabledStems.other = !store.enabledStems.other; }} bgColor={snap.enabledStems.other ? "blue.300" : "gray.500"}>O</Button>}
+          { snap.project.stems.vocals && <Button size="2xs" onClick={() => { store.enabledStems.vocals = !store.enabledStems.vocals; }} bgColor={snap.enabledStems.vocals ? "blue.300" : "gray.500"}>V</Button>}
+        </HStack>
+      </VStack>
     </Stack>
   </>;
 

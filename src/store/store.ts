@@ -12,6 +12,12 @@ interface Store {
   isUserSettingsLoaded: boolean; // ユーザー設定がロードされたかどうか
   isPythonEnvReady: boolean; // Pythonのセットアップが完了したかどうか
   splashScreenStack: string[]; // スプラッシュスクリーンのスタック
+  enabledStems: {
+    bass: boolean;
+    drums: boolean;
+    other: boolean;
+    vocals: boolean;
+  };
 }
 
 const store = proxy<Store>({
@@ -23,7 +29,13 @@ const store = proxy<Store>({
   userSettings: new UserSettings(), // ユーザー設定をロード、なければ新規作成
   isUserSettingsLoaded: false,
   isPythonEnvReady: false,
-  splashScreenStack: []
+  splashScreenStack: [],
+  enabledStems: {
+    bass: false,
+    drums: false,
+    other: false,
+    vocals: false
+  }
 });
 
 (async () => {

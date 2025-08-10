@@ -3,6 +3,7 @@ import store from "./store/store";
 import { useEffect, useRef } from "react";
 import { useInterval, useKeyPressEvent } from "react-use";
 import TemporalPosition from "./store/temporalPosition";
+import Stem from "./AudioSystem/Stem";
 
 export default function AudioSystem() {
 
@@ -64,9 +65,24 @@ export default function AudioSystem() {
 
   useInterval(updatePlayingPosition, 50);
 
+  useEffect(() => {
+
+    if (!audioRef.current) return;
+
+    // 全部がfalseの時だけメインの音量を1にする
+    audioRef.current.volume = !snap.enabledStems.bass && !snap.enabledStems.drums && !snap.enabledStems.other && !snap.enabledStems.vocals ? 1 : 0;
+
+  }, [snap.project.music, snap.enabledStems.bass, snap.enabledStems.drums, snap.enabledStems.other, snap.enabledStems.vocals]);
+
   if (!snap.project.music) return <></>;
 
   return <>
     <audio controls style={{display: "none"}} ref={audioRef} />
+
+    {/* 以下stems */}
+    <Stem audioSrc={snap.project.stems.bass} audioRef={audioRef} volume={snap.enabledStems.bass ? 1 : 0} />
+    <Stem audioSrc={snap.project.stems.drums} audioRef={audioRef} volume={snap.enabledStems.drums ? 1 : 0} />
+    <Stem audioSrc={snap.project.stems.other} audioRef={audioRef} volume={snap.enabledStems.other ? 1 : 0} />
+    <Stem audioSrc={snap.project.stems.vocals} audioRef={audioRef} volume={snap.enabledStems.vocals ? 1 : 0} />
   </>;
 }
