@@ -23,10 +23,10 @@ export default function SplashScreen() {
       width="100vw"
       height="100vh"
       bg="black"
-      zIndex="100000000000" // 必要に応じて調整
+      zIndex="100000000000"
     >
       <AbsoluteCenter>
-        <Bleed position={"relative"} w={"80vw"} aspectRatio={"1.42"} bgColor={"red"}>
+        <Bleed position={"relative"} w={"100vmin"} aspectRatio={"1.42"} >
           <Bleed
             position="absolute"
             top={0}
@@ -34,7 +34,7 @@ export default function SplashScreen() {
             w={"100%"}
             h={"100%"}
             bgImage={`url('SplashBackground.png')`}
-            backgroundSize="cover"
+            backgroundSize="contain"
             backgroundPosition="center"
             backgroundRepeat="no-repeat"
             zIndex={0}
@@ -47,7 +47,7 @@ export default function SplashScreen() {
             w={"100%"}
             h={"100%"}
             bgImage={`url('SOFEditorSplashLogo.png')`}
-            backgroundSize="cover"
+            backgroundSize="contain"
             backgroundPosition="center"
             backgroundRepeat="no-repeat"
             zIndex={0}
