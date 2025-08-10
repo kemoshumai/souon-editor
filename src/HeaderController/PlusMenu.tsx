@@ -163,7 +163,7 @@ export default function PlusMenu() {
         <DialogBody>
           <Box display="flex" alignItems="center" gap={4}>
             <Spinner size="lg" />
-            <Text>ステムを作成しています。しばらくお待ちください...</Text>
+            <Text>ステムを作成しています。コーヒーでも飲んでてください...</Text>
           </Box>
         </DialogBody>
       </DialogContent>

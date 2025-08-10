@@ -401,12 +401,21 @@ fn demucs(
     log::info!("Running Demucs...");
 
     // demucsを実行
-    let output = std::process::Command::new(&demucs_path)
+    let mut command = std::process::Command::new(&demucs_path);
+    command
         .arg(&temp_file)
         .arg("-o")
         .arg(&output_dir)
         .env("PYTHONUSERBASE", "") // ユーザーサイトパッケージを無効化
-        .env("PYTHONPATH", "") // PYTHONPATH をクリア
+        .env("PYTHONPATH", ""); // PYTHONPATH をクリア
+
+    #[cfg(target_os = "windows")]
+    {
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
+
+    let output = command
         .output()
         .map_err(|e| format!("Failed to execute demucs: {}", e))?;
 
