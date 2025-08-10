@@ -51,13 +51,7 @@ fn check_python(app_handle: tauri::AppHandle) -> Result<String, String> {
         )
         .expect("Failed to resolve local Python executable path");
 
-    let local_pip_path = app_handle
-        .path()
-        .resolve(
-            "python_env/Scripts/pip.exe",
-            tauri::path::BaseDirectory::AppLocalData,
-        )
-        .expect("Failed to resolve local pip executable path");
+
 
     // AppLocalDataにPython環境が存在しない場合、Resourceからコピー
     if !local_python_path.exists() {
@@ -95,6 +89,14 @@ fn check_python(app_handle: tauri::AppHandle) -> Result<String, String> {
             local_python_dir.to_string_lossy()
         );
     }
+
+    let local_pip_path = app_handle
+        .path()
+        .resolve(
+            "python_env/Scripts/pip.exe",
+            tauri::path::BaseDirectory::AppLocalData,
+        )
+        .expect("Failed to resolve pip executable path");
 
     log::info!(
         "Python executable path: {}",
@@ -176,9 +178,8 @@ fn check_python(app_handle: tauri::AppHandle) -> Result<String, String> {
 
     // 全部の絶対パスを"\n"区切りで返す
     Ok(format!(
-        "{}\n{}\n{}",
+        "{}\n{}",
         local_python_path.to_string_lossy(),
-        local_pip_path.to_string_lossy(),
         python_script.to_string_lossy()
     ))
 }
@@ -222,18 +223,14 @@ fn check_demucs(app_handle: tauri::AppHandle) -> Result<String, String> {
         }
 
         // pipの直接パスを取得
-        let local_pip_path = app_handle
-            .path()
-            .resolve(
-                "python_env/Scripts/pip.exe",
-                tauri::path::BaseDirectory::AppLocalData,
-            )
-            .expect("Failed to resolve pip executable path");
-
-        // pipを実行し依存関係をインストール（pip.exe install --upgrade setuptools wheel）
-        let mut command = std::process::Command::new(&local_pip_path);
+        // pipを実行し依存関係をインストール（python.exe -m pip install --upgrade setuptools wheel）
+        let mut command = std::process::Command::new(&local_python_path);
         command
+            .arg("-m")
+            .arg("pip")
             .arg("install")
+            .arg("--isolated")
+            .arg("--ignore-installed")
             .arg("--upgrade")
             .arg("setuptools")
             .arg("wheel")
@@ -247,8 +244,8 @@ fn check_demucs(app_handle: tauri::AppHandle) -> Result<String, String> {
 
         let output = command
             .output()
-            .map_err(|e| format!("Failed to execute pip for dependencies: {} (command: {} install --upgrade setuptools wheel soundfile)", 
-                e, local_pip_path.to_string_lossy()))?;
+            .map_err(|e| format!("Failed to execute pip for dependencies: {} (command: {} -m pip install --upgrade setuptools wheel soundfile)", 
+                e, local_python_path.to_string_lossy()))?;
 
         log::info!(
             "Dependencies install stdout: {}",
@@ -267,10 +264,14 @@ fn check_demucs(app_handle: tauri::AppHandle) -> Result<String, String> {
         }
 
         // demucsをインストール
-        let mut command = std::process::Command::new(&local_pip_path);
+        let mut command = std::process::Command::new(&local_python_path);
 
         command
+            .arg("-m")
+            .arg("pip")
             .arg("install")
+            .arg("--isolated")
+            .arg("--ignore-installed")
             .arg("--upgrade")
             .arg("demucs")
             .env("PYTHONUSERBASE", "") // ユーザーサイトパッケージを無効化
@@ -284,9 +285,9 @@ fn check_demucs(app_handle: tauri::AppHandle) -> Result<String, String> {
 
         let output = command.output().map_err(|e| {
             format!(
-                "Failed to execute pip for demucs: {} (command: {} install --upgrade demucs)",
+                "Failed to execute pip for demucs: {} (command: {} -m pip install --upgrade demucs)",
                 e,
-                local_pip_path.to_string_lossy()
+                local_python_path.to_string_lossy()
             )
         })?;
 
