@@ -1,4 +1,4 @@
-import { Button, MenuContent, MenuItem, MenuRoot, MenuSelectionDetails, MenuTrigger } from "@chakra-ui/react";
+import { Button, MenuContent, MenuItem, MenuRoot, MenuSelectionDetails, MenuTrigger, Text, Box, Spinner } from "@chakra-ui/react";
 import { MdAddChart, MdAutoFixHigh, MdMusicNote, MdSpeed } from "react-icons/md";
 import { PiPlus } from "react-icons/pi";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -10,6 +10,8 @@ import { toaster } from "../components/ui/toaster";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import TempoEvent from "../store/tempoEvent";
 import { invoke } from "@tauri-apps/api/core";
+import { useState } from "react";
+import { DialogRoot, DialogContent, DialogHeader, DialogFooter, DialogBody, DialogTitle, DialogDescription, DialogCloseTrigger } from "../components/ui/dialog";
 
 enum PlusMenuSelection {
   SetMusicFile = "set_music_file",
@@ -19,6 +21,8 @@ enum PlusMenuSelection {
 }
 
 export default function PlusMenu() {
+  const [showStemConfirmDialog, setShowStemConfirmDialog] = useState(false);
+  const [isStemGenerating, setIsStemGenerating] = useState(false);
 
   const AddChart = () => {
     const chart = new Chart(crypto.randomUUID(), [], 12, "新しい譜面");
@@ -59,20 +63,42 @@ export default function PlusMenu() {
   }
 
   const GenerateStems = async () => {
+    setShowStemConfirmDialog(true);
+  }
 
-    const [base64, mimeType] = await store.project.getMusicBase64();
+  const handleConfirmStemGeneration = async () => {
+    setShowStemConfirmDialog(false);
+    setIsStemGenerating(true);
 
-    const result: string = await invoke("demucs", {
-      inputBase64: base64,
-      mimeType: mimeType,
-    });
+    try {
+      const [base64, mimeType] = await store.project.getMusicBase64();
 
-    const stems = result.split("\n").map((s: string) => "data:audio/ogg;base64," + s);
-    store.project.stems.bass = stems[0];
-    store.project.stems.drums = stems[1];
-    store.project.stems.other = stems[2];
-    store.project.stems.vocals = stems[3];
+      const result: string = await invoke("demucs", {
+        inputBase64: base64,
+        mimeType: mimeType,
+      });
 
+      const stems = result.split("\n").map((s: string) => "data:audio/ogg;base64," + s);
+      store.project.stems.bass = stems[0];
+      store.project.stems.drums = stems[1];
+      store.project.stems.other = stems[2];
+      store.project.stems.vocals = stems[3];
+
+      toaster.create({ 
+        title: "ステム生成完了", 
+        description: "ステムの生成が正常に完了しました。", 
+        type: "success" 
+      });
+    } catch (error) {
+      toaster.create({ 
+        title: "ステム生成エラー", 
+        description: "ステムの生成中にエラーが発生しました。", 
+        type: "error" 
+      });
+      console.error("Stem generation error:", error);
+    } finally {
+      setIsStemGenerating(false);
+    }
   }
 
   const onSelect = (d: MenuSelectionDetails) => {
@@ -104,5 +130,43 @@ export default function PlusMenu() {
         <MenuItem value={PlusMenuSelection.GenerateStems}><MdAutoFixHigh />ステムを生成する</MenuItem>
       </MenuContent>
     </MenuRoot>
+
+    {/* ステム生成確認ダイアログ */}
+    <DialogRoot open={showStemConfirmDialog} onOpenChange={(details) => setShowStemConfirmDialog(details.open)}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>ステム生成の確認</DialogTitle>
+          <DialogCloseTrigger />
+        </DialogHeader>
+        <DialogBody>
+          <DialogDescription>
+            ステムを生成しますか？この処理には時間がかかる場合があります。
+          </DialogDescription>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setShowStemConfirmDialog(false)}>
+            キャンセル
+          </Button>
+          <Button onClick={handleConfirmStemGeneration}>
+            OK
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </DialogRoot>
+
+    {/* ステム生成中画面 */}
+    <DialogRoot open={isStemGenerating} onOpenChange={() => {}}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>ステムを作成中</DialogTitle>
+        </DialogHeader>
+        <DialogBody>
+          <Box display="flex" alignItems="center" gap={4}>
+            <Spinner size="lg" />
+            <Text>ステムを作成しています。しばらくお待ちください...</Text>
+          </Box>
+        </DialogBody>
+      </DialogContent>
+    </DialogRoot>
   </>);
 }
