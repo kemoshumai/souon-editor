@@ -1,6 +1,6 @@
 import { useSnapshot } from "valtio";
 import store from "./store/store";
-import { Box, AbsoluteCenter, Text, VStack } from "@chakra-ui/react";
+import { Box, AbsoluteCenter, Text, VStack, Bleed, Image } from "@chakra-ui/react";
 
 export default function SplashScreen() {
   const snap = useSnapshot(store);
@@ -26,17 +26,51 @@ export default function SplashScreen() {
       zIndex="100000000000" // 必要に応じて調整
     >
       <AbsoluteCenter>
-        <VStack>
-          <Text>Loading...</Text>
-          <Text>アプリケーションを起動しています。</Text>
-          {!snap.isUserSettingsLoaded && <Text>ユーザー設定をロード中...</Text>}
-          {!snap.isPythonEnvReady && <Text>Python環境をセットアップ中...</Text>}
-          {
-            snap.splashScreenStack.map((message, index) => (
-              <Text key={index}>{message}</Text>
-            ))
-          }
-        </VStack>
+        <Bleed position={"relative"} w={"80vw"} aspectRatio={"1.42"} bgColor={"red"}>
+          <Bleed
+            position="absolute"
+            top={0}
+            left={0}
+            w={"100%"}
+            h={"100%"}
+            bgImage={`url('SplashBackground.png')`}
+            backgroundSize="cover"
+            backgroundPosition="center"
+            backgroundRepeat="no-repeat"
+            zIndex={0}
+            overflow={"hidden"}
+          />
+          <Bleed
+            position="absolute"
+            top={0}
+            left={0}
+            w={"100%"}
+            h={"100%"}
+            bgImage={`url('SOFEditorSplashLogo.png')`}
+            backgroundSize="cover"
+            backgroundPosition="center"
+            backgroundRepeat="no-repeat"
+            zIndex={0}
+            overflow={"hidden"}
+          />
+            <VStack
+            position="absolute"
+            bottom={5}
+            left={5}
+            w={"100%"}
+            h={"100%"}
+            zIndex={0}
+            overflow={"hidden"}
+            justifyContent="flex-end"
+            alignItems="flex-start"
+            >
+              {
+                snap.splashScreenStack.map((message, index) => (
+                  <Text key={index}>{message}</Text>
+                ))
+              }
+            </VStack>
+        </Bleed>
       </AbsoluteCenter>
     </Box>
   );
