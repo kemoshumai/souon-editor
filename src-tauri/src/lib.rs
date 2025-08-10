@@ -133,8 +133,13 @@ fn check_demucs(app_handle: tauri::AppHandle) -> Result<String, String> {
 #[tauri::command]
 fn demucs(app_handle: tauri::AppHandle, input_base64: &str, mime_type: &str) -> Result<String, String> {
 
+    println!("Running Demucs with input base64 and MIME type: {}", mime_type);
+    println!("Input data base64 length: {}", input_base64.len());
+
     // 入力のbase64をデコード
     let input_data = base64::decode(input_base64).map_err(|e| format!("Failed to decode base64: {}", e))?;
+
+    println!("Decoded input data length: {}", input_data.len());
 
     // 拡張子を取得
     let extension = match mime_type {
@@ -143,8 +148,10 @@ fn demucs(app_handle: tauri::AppHandle, input_base64: &str, mime_type: &str) -> 
         "audio/flac" => "flac",
         "audio/ogg" => "ogg",
         "audio/aac" => "aac",
-        _ => mime_type.split('/').last().unwrap_or("wav")
+        _ => mime_type.split('/').next_back().unwrap_or("wav")
     };
+
+    println!("Using extension: {}", extension);
 
     // 一時ファイルのパスを生成
     let temp_file = app_handle.path()
@@ -179,6 +186,8 @@ fn demucs(app_handle: tauri::AppHandle, input_base64: &str, mime_type: &str) -> 
         }
     }
 
+    println!("Running Demucs...");
+
     // demucsを実行
     let output = std::process::Command::new(&demucs_path)
         .arg(&temp_file)
@@ -186,6 +195,8 @@ fn demucs(app_handle: tauri::AppHandle, input_base64: &str, mime_type: &str) -> 
         .arg(&output_dir)
         .output()
         .map_err(|e| format!("Failed to execute demucs: {}", e))?;
+
+    println!("Done.");
 
     if !output.status.success() {
         return Err(format!("Failed to run demucs: {}", String::from_utf8_lossy(&output.stderr)));
@@ -202,6 +213,17 @@ fn demucs(app_handle: tauri::AppHandle, input_base64: &str, mime_type: &str) -> 
     if output_files.len() != 4 {
         return Err("Unexpected number of output files found".to_string());
     }
+
+    // bass,drums,other,vocalsの順で出力ファイルを並べ替え
+    output_files.sort_by(|a, b| {
+        let a_path = std::path::Path::new(a);
+        let b_path = std::path::Path::new(b);
+        let a_name = a_path.file_stem().unwrap_or_default();
+        let b_name = b_path.file_stem().unwrap_or_default();
+        a_name.cmp(b_name)
+    });
+
+    // TODO: その順番でmp3形式に変換しbase64にする
 
     // output_filesを\nで結合して返す
     Ok(output_files.join("\n"))

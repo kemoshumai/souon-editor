@@ -63,11 +63,13 @@ export default function PlusMenu() {
     const [base64, mimeType] = await store.project.getMusicBase64();
 
     const result = await invoke("demucs", {
-      input_base64: base64,
-      mime_type: mimeType,
+      inputBase64: base64,
+      mimeType: mimeType,
     });
 
     console.log(result);
+
+    
   }
 
   const onSelect = (d: MenuSelectionDetails) => {
