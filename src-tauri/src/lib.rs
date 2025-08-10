@@ -4,6 +4,10 @@ use tauri::{Manager, State};
 use tauri_plugin_dialog::DialogExt;
 use base64::{Engine as _, engine::general_purpose};
 
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
+
 #[tauri::command]
 async fn set_title(window: tauri::Window, title: &str) -> Result<(), tauri::Error> {
     println!("Setting title to: {}", title);
@@ -45,9 +49,16 @@ fn check_python(app_handle: tauri::AppHandle) -> Result<String, String> {
             .expect("Failed to resolve get-pip.py script path");
 
         // Pythonを実行してpipをインストール
-        let output = std::process::Command::new(&resource_path)
-            .arg(python_script)
-            .output()
+        let mut command = std::process::Command::new(&resource_path);
+        let command = command.arg(python_script);
+
+        #[cfg(target_os = "windows")]
+        {
+            const CREATE_NO_WINDOW: u32 = 0x08000000;
+            command.creation_flags(CREATE_NO_WINDOW);
+        }
+
+        let output = command.output()
             .map_err(|e| format!("Failed to execute Python script: {}", e))?;
 
         if !output.status.success() {
@@ -64,6 +75,7 @@ fn check_python(app_handle: tauri::AppHandle) -> Result<String, String> {
 fn check_demucs(app_handle: tauri::AppHandle) -> Result<String, String> {
 
     println!("Checking Demucs environment...");
+
 
     // demucsのパスを取得（python_env/Scripts/demucs.exe）
     let demucs_path = app_handle.path()
@@ -82,14 +94,23 @@ fn check_demucs(app_handle: tauri::AppHandle) -> Result<String, String> {
         println!("Demucs not found, installing...");
 
         // Pythonを実行し依存関係をインストール（python.exe -m pip install --upgrade setuptools wheel）
-        let output = std::process::Command::new(&resource_path)
+        let mut command = std::process::Command::new(&resource_path);
+        command
             .arg("-m")
             .arg("pip")
             .arg("install")
             .arg("--upgrade")
             .arg("setuptools")
             .arg("wheel")
-            .arg("soundfile")
+            .arg("soundfile");
+
+        #[cfg(target_os = "windows")]
+        {
+            const CREATE_NO_WINDOW: u32 = 0x08000000;
+            command.creation_flags(CREATE_NO_WINDOW);
+        }
+        
+        let output = command
             .output()
             .map_err(|e| format!("Failed to execute Python script: {}", e))?;
 
@@ -98,12 +119,23 @@ fn check_demucs(app_handle: tauri::AppHandle) -> Result<String, String> {
         }
 
         // demucsをインストール
-        let output = std::process::Command::new(&resource_path)
+        let mut command = std::process::Command::new(&resource_path);
+
+        command
             .arg("-m")
             .arg("pip")
             .arg("install")
             .arg("--upgrade")
-            .arg("demucs")
+            .arg("demucs");
+
+        
+        #[cfg(target_os = "windows")]
+        {
+            const CREATE_NO_WINDOW: u32 = 0x08000000;
+            command.creation_flags(CREATE_NO_WINDOW);
+        }
+
+        let output = command
             .output()
             .map_err(|e| format!("Failed to execute Python script: {}", e))?;
 
