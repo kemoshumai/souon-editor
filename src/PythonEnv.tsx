@@ -11,13 +11,17 @@ export default function PythonEnv() {
 
     if (snap.isPythonEnvReady) return;
 
-    store.splashScreenStack.push("Pythonのセットアップを確認しています。");
+    store.splashScreenStack.push("ランタイムをセットアップしています。");
+
+    store.splashScreenStack.push("これには数分かかる場合があります。");
 
     await invoke("check_python");
 
-    store.splashScreenStack.push("Demucsのセットアップを確認しています。");
+    store.splashScreenStack.push("ライブラリを設定しています。");
 
     await invoke("check_demucs");
+
+    store.splashScreenStack.push("セットアップが完了しました。");
 
     store.isPythonEnvReady = true;
 
