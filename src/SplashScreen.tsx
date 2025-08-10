@@ -1,6 +1,6 @@
 import { useSnapshot } from "valtio";
 import store from "./store/store";
-import { Box, AbsoluteCenter, Text, VStack, Bleed, Image } from "@chakra-ui/react";
+import { Box, AbsoluteCenter, Text, VStack, Bleed } from "@chakra-ui/react";
 
 export default function SplashScreen() {
   const snap = useSnapshot(store);
