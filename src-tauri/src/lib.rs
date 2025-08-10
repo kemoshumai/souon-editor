@@ -2,6 +2,7 @@ use std::{process::exit, sync::Mutex};
 
 use tauri::{Manager, State};
 use tauri_plugin_dialog::DialogExt;
+use base64::{Engine as _, engine::general_purpose};
 
 #[tauri::command]
 async fn set_title(window: tauri::Window, title: &str) -> Result<(), tauri::Error> {
@@ -135,9 +136,8 @@ fn demucs(app_handle: tauri::AppHandle, input_base64: &str, mime_type: &str) -> 
 
     println!("Running Demucs with input base64 and MIME type: {}", mime_type);
     println!("Input data base64 length: {}", input_base64.len());
-
     // 入力のbase64をデコード
-    let input_data = base64::decode(input_base64).map_err(|e| format!("Failed to decode base64: {}", e))?;
+    let input_data = general_purpose::STANDARD.decode(input_base64).map_err(|e| format!("Failed to decode base64: {}", e))?;
 
     println!("Decoded input data length: {}", input_data.len());
 
@@ -300,9 +300,8 @@ fn convert_to_vorbis(wav_path: &std::path::Path) -> String {
             return String::new();
         }
     }
-
     // Base64エンコード
-    base64::encode(&output_data)
+    general_purpose::STANDARD.encode(&output_data)
 }
 
 fn search_wav_files(dir: &std::path::Path, output_files: &mut Vec<String>) -> Result<(), String> {
