@@ -19,6 +19,12 @@ export default class Project {
   charts: Chart[];
   musicTempoList: TempoEvent[];
   playingPosition: TemporalPosition;
+  stems: {
+    bass: string,
+    drums: string,
+    other: string,
+    vocals: string
+  };
 
   constructor(music: string, name: string, charts: Chart[], musicTempoList: TempoEvent[]) {
     this.music = music;
@@ -29,6 +35,13 @@ export default class Project {
     this.zoomScale = 3.2;
     this.musicTempoList = musicTempoList;
     this.playingPosition = TemporalPosition.createWithSeconds(2);
+
+    this.stems = {
+      bass: "",
+      drums: "",
+      other: "",
+      vocals: ""
+    };
   }
 
   getHeight(): number {
@@ -139,7 +152,8 @@ export default class Project {
       zoomScale: this.zoomScale,
       playingPosition: this.playingPosition.getSerialized(),
       charts: this.charts,
-      musicTempoList: this.musicTempoList
+      musicTempoList: this.musicTempoList,
+      stems: this.stems
     });
   }
 
@@ -203,7 +217,17 @@ export default class Project {
     }), c.laneNumber, c.label));// クラスに戻す
     this.musicTempoList = json.musicTempoList.map((t: any) => new TempoEvent(t.uuid, t.tempo, t.beat, t.length));// クラスに戻す
 
+    // ステム情報を復元
+    this.stems = {
+      bass: json.stems.bass,
+      drums: json.stems.drums,
+      other: json.stems.other,
+      vocals: json.stems.vocals
+    };
+
     store.saved = true;
+
+    console.log(this);
 
     toaster.create({
       title: "ファイルを読み込みました",

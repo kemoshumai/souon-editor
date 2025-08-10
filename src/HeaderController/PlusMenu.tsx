@@ -62,12 +62,16 @@ export default function PlusMenu() {
 
     const [base64, mimeType] = await store.project.getMusicBase64();
 
-    const result = await invoke("demucs", {
+    const result: string = await invoke("demucs", {
       inputBase64: base64,
       mimeType: mimeType,
     });
 
-    console.log(result);
+    const stems = result.split("\n").map((s: string) => "data:audio/ogg;base64," + s);
+    store.project.stems.bass = stems[0];
+    store.project.stems.drums = stems[1];
+    store.project.stems.other = stems[2];
+    store.project.stems.vocals = stems[3];
 
   }
 
