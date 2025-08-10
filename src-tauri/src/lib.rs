@@ -7,6 +7,25 @@ use base64::{Engine as _, engine::general_purpose};
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
 
+// ディレクトリを再帰的にコピーするヘルパー関数
+fn copy_dir_recursive(src: &std::path::Path, dst: &std::path::Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(dst)?;
+    
+    for entry in std::fs::read_dir(src)? {
+        let entry = entry?;
+        let path = entry.path();
+        let dest_path = dst.join(entry.file_name());
+        
+        if path.is_dir() {
+            copy_dir_recursive(&path, &dest_path)?;
+        } else {
+            std::fs::copy(&path, &dest_path)?;
+        }
+    }
+    
+    Ok(())
+}
+
 
 #[tauri::command]
 async fn set_title(window: tauri::Window, title: &str) -> Result<(), tauri::Error> {
@@ -25,37 +44,64 @@ fn check_python(app_handle: tauri::AppHandle) -> Result<String, String> {
 
     println!("Checking Python environment...");
 
-    // Pythonの同梱先を取得
-    let resource_path = app_handle.path()
-        .resolve("python_env/python.exe", tauri::path::BaseDirectory::Resource)
-        .expect("Failed to resolve Python executable path");
+    // AppLocalDataのPython環境パスを取得
+    let local_python_path = app_handle.path()
+        .resolve("python_env/python.exe", tauri::path::BaseDirectory::AppLocalData)
+        .expect("Failed to resolve local Python executable path");
 
-    println!("Python executable path: {}", resource_path.to_string_lossy());
-    println!("Python executable exists: {}", resource_path.exists());
+    let local_pip_path = app_handle.path()
+        .resolve("python_env/Scripts/pip.exe", tauri::path::BaseDirectory::AppLocalData)
+        .expect("Failed to resolve local pip executable path");
 
-    // pipのパスを取得
-    let pip_path = app_handle.path()
-        .resolve("python_env/Scripts/pip.exe", tauri::path::BaseDirectory::Resource)
-        .expect("Failed to resolve pip executable path");
+    // AppLocalDataにPython環境が存在しない場合、Resourceからコピー
+    if !local_python_path.exists() {
+        println!("Local Python environment not found, copying from bundle...");
+        
+        let resource_python_dir = app_handle.path()
+            .resolve("python_env", tauri::path::BaseDirectory::Resource)
+            .expect("Failed to resolve bundled Python directory path");
+            
+        let local_python_dir = app_handle.path()
+            .resolve("python_env", tauri::path::BaseDirectory::AppLocalData)
+            .expect("Failed to resolve local Python directory path");
 
-    println!("Pip executable path: {}", pip_path.to_string_lossy());
-    println!("Pip executable exists: {}", pip_path.exists());
+        if !resource_python_dir.exists() {
+            return Err(format!("Bundled Python environment not found at: {}", resource_python_dir.to_string_lossy()));
+        }
+
+        // AppLocalDataディレクトリが存在しない場合は作成
+        if let Some(parent) = local_python_dir.parent() {
+            std::fs::create_dir_all(parent)
+                .map_err(|e| format!("Failed to create AppLocalData directory: {}", e))?;
+        }
+
+        // Python環境をコピー
+        copy_dir_recursive(&resource_python_dir, &local_python_dir)
+            .map_err(|e| format!("Failed to copy Python environment: {}", e))?;
+            
+        println!("Python environment copied to: {}", local_python_dir.to_string_lossy());
+    }
+
+    println!("Python executable path: {}", local_python_path.to_string_lossy());
+    println!("Python executable exists: {}", local_python_path.exists());
+    println!("Pip executable path: {}", local_pip_path.to_string_lossy());
+    println!("Pip executable exists: {}", local_pip_path.exists());
 
     // pipが存在しない場合インストール
-    let python_script = if !pip_path.exists() {
+    let python_script = if !local_pip_path.exists() {
 
         println!("Pip not found, installing...");
 
         let python_script = app_handle.path()
-            .resolve("python_env/get-pip.py", tauri::path::BaseDirectory::Resource)
+            .resolve("python_env/get-pip.py", tauri::path::BaseDirectory::AppLocalData)
             .expect("Failed to resolve get-pip.py script path");
 
         println!("get-pip.py path: {}", python_script.to_string_lossy());
         println!("get-pip.py exists: {}", python_script.exists());
 
         // Pythonの実行可能性をチェック
-        if !resource_path.exists() {
-            return Err(format!("Python executable not found at: {}", resource_path.to_string_lossy()));
+        if !local_python_path.exists() {
+            return Err(format!("Python executable not found at: {}", local_python_path.to_string_lossy()));
         }
 
         if !python_script.exists() {
@@ -63,7 +109,7 @@ fn check_python(app_handle: tauri::AppHandle) -> Result<String, String> {
         }
 
         // Pythonを実行してpipをインストール
-        let mut command = std::process::Command::new(&resource_path);
+        let mut command = std::process::Command::new(&local_python_path);
         let command = command.arg(&python_script);
 
         #[cfg(target_os = "windows")]
@@ -74,7 +120,7 @@ fn check_python(app_handle: tauri::AppHandle) -> Result<String, String> {
 
         let output = command.output()
             .map_err(|e| format!("Failed to execute Python script: {} (command: {} {})", 
-                e, resource_path.to_string_lossy(), python_script.to_string_lossy()))?;
+                e, local_python_path.to_string_lossy(), python_script.to_string_lossy()))?;
 
         println!("pip install stdout: {}", String::from_utf8_lossy(&output.stdout));
         println!("pip install stderr: {}", String::from_utf8_lossy(&output.stderr));
@@ -90,7 +136,7 @@ fn check_python(app_handle: tauri::AppHandle) -> Result<String, String> {
 
     // 全部の絶対パスを"\n"区切りで返す
     Ok(
-        format!("{}\n{}\n{}", resource_path.to_string_lossy(), pip_path.to_string_lossy(), python_script.to_string_lossy())
+        format!("{}\n{}\n{}", local_python_path.to_string_lossy(), local_pip_path.to_string_lossy(), python_script.to_string_lossy())
     )
 }
 
@@ -99,10 +145,9 @@ fn check_demucs(app_handle: tauri::AppHandle) -> Result<String, String> {
 
     println!("Checking Demucs environment...");
 
-
-    // demucsのパスを取得（python_env/Scripts/demucs.exe）
+    // demucsのパスを取得（AppLocalDataのpython_env/Scripts/demucs.exe）
     let demucs_path = app_handle.path()
-        .resolve("python_env/Scripts/demucs.exe", tauri::path::BaseDirectory::Resource)
+        .resolve("python_env/Scripts/demucs.exe", tauri::path::BaseDirectory::AppLocalData)
         .expect("Failed to resolve demucs executable path");
 
     println!("Demucs executable path: {}", demucs_path.to_string_lossy());
@@ -110,21 +155,21 @@ fn check_demucs(app_handle: tauri::AppHandle) -> Result<String, String> {
 
     // demucsが存在しない場合インストール
     if !demucs_path.exists() {
-        // Pythonの同梱先を取得
-        let resource_path = app_handle.path()
-            .resolve("python_env/python.exe", tauri::path::BaseDirectory::Resource)
+        // Pythonの同梱先を取得（AppLocalData）
+        let local_python_path = app_handle.path()
+            .resolve("python_env/python.exe", tauri::path::BaseDirectory::AppLocalData)
             .expect("Failed to resolve Python executable path");
 
         println!("Demucs not found, installing...");
-        println!("Using Python at: {}", resource_path.to_string_lossy());
+        println!("Using Python at: {}", local_python_path.to_string_lossy());
 
         // Pythonの実行可能性をチェック
-        if !resource_path.exists() {
-            return Err(format!("Python executable not found at: {}", resource_path.to_string_lossy()));
+        if !local_python_path.exists() {
+            return Err(format!("Python executable not found at: {}", local_python_path.to_string_lossy()));
         }
 
         // Pythonを実行し依存関係をインストール（python.exe -m pip install --upgrade setuptools wheel）
-        let mut command = std::process::Command::new(&resource_path);
+        let mut command = std::process::Command::new(&local_python_path);
         command
             .arg("-m")
             .arg("pip")
@@ -132,7 +177,9 @@ fn check_demucs(app_handle: tauri::AppHandle) -> Result<String, String> {
             .arg("--upgrade")
             .arg("setuptools")
             .arg("wheel")
-            .arg("soundfile");
+            .arg("soundfile")
+            .env("PYTHONUSERBASE", "") // ユーザーサイトパッケージを無効化
+            .env("PYTHONPATH", ""); // PYTHONPATH をクリア
 
         #[cfg(target_os = "windows")]
         {
@@ -143,7 +190,7 @@ fn check_demucs(app_handle: tauri::AppHandle) -> Result<String, String> {
         let output = command
             .output()
             .map_err(|e| format!("Failed to execute Python script for dependencies: {} (command: {} -m pip install --upgrade setuptools wheel soundfile)", 
-                e, resource_path.to_string_lossy()))?;
+                e, local_python_path.to_string_lossy()))?;
 
         println!("Dependencies install stdout: {}", String::from_utf8_lossy(&output.stdout));
         println!("Dependencies install stderr: {}", String::from_utf8_lossy(&output.stderr));
@@ -153,14 +200,16 @@ fn check_demucs(app_handle: tauri::AppHandle) -> Result<String, String> {
         }
 
         // demucsをインストール
-        let mut command = std::process::Command::new(&resource_path);
+        let mut command = std::process::Command::new(&local_python_path);
 
         command
             .arg("-m")
             .arg("pip")
             .arg("install")
             .arg("--upgrade")
-            .arg("demucs");
+            .arg("demucs")
+            .env("PYTHONUSERBASE", "") // ユーザーサイトパッケージを無効化
+            .env("PYTHONPATH", ""); // PYTHONPATH をクリア
 
         
         #[cfg(target_os = "windows")]
@@ -172,7 +221,7 @@ fn check_demucs(app_handle: tauri::AppHandle) -> Result<String, String> {
         let output = command
             .output()
             .map_err(|e| format!("Failed to execute Python script for demucs: {} (command: {} -m pip install --upgrade demucs)", 
-                e, resource_path.to_string_lossy()))?;
+                e, local_python_path.to_string_lossy()))?;
 
         // stdoutとstderrを出力
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -228,9 +277,9 @@ fn demucs(app_handle: tauri::AppHandle, input_base64: &str, mime_type: &str) -> 
     // 一時ファイルにデータを書き込む
     std::fs::write(&temp_file, input_data).map_err(|e| format!("Failed to write temporary file: {}", e))?;
 
-    // demucs.exeのパスを取得
+    // demucs.exeのパスを取得（AppLocalData）
     let demucs_path = app_handle.path()
-        .resolve("python_env/Scripts/demucs.exe", tauri::path::BaseDirectory::Resource)
+        .resolve("python_env/Scripts/demucs.exe", tauri::path::BaseDirectory::AppLocalData)
         .expect("Failed to resolve demucs executable path");
 
     // 出力先を取得（AppLocalData）
@@ -260,6 +309,8 @@ fn demucs(app_handle: tauri::AppHandle, input_base64: &str, mime_type: &str) -> 
         .arg(&temp_file)
         .arg("-o")
         .arg(&output_dir)
+        .env("PYTHONUSERBASE", "") // ユーザーサイトパッケージを無効化
+        .env("PYTHONPATH", "") // PYTHONPATH をクリア
         .output()
         .map_err(|e| format!("Failed to execute demucs: {}", e))?;
 
