@@ -69,7 +69,6 @@ export default function PlusMenu() {
 
     console.log(result);
 
-    
   }
 
   const onSelect = (d: MenuSelectionDetails) => {

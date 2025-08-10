@@ -223,10 +223,86 @@ fn demucs(app_handle: tauri::AppHandle, input_base64: &str, mime_type: &str) -> 
         a_name.cmp(b_name)
     });
 
-    // TODO: その順番でmp3形式に変換しbase64にする
+    // その順番でvorbis形式に変換しbase64にする
+    let mut vorbis_files = Vec::new();
+    for wav_file in output_files {
+        let wav_path = std::path::Path::new(&wav_file);
+        let output_base64 = convert_to_vorbis(wav_path);
+        vorbis_files.push(output_base64);
+    }
 
     // output_filesを\nで結合して返す
-    Ok(output_files.join("\n"))
+    Ok(vorbis_files.join("\n"))
+}
+
+fn convert_to_vorbis(wav_path: &std::path::Path) -> String {
+    // WAVファイルを読み込み
+    let mut wav_reader = match hound::WavReader::open(wav_path) {
+        Ok(reader) => reader,
+        Err(e) => {
+            println!("Failed to open WAV file {}: {}", wav_path.display(), e);
+            return String::new();
+        }
+    };
+
+    let spec = wav_reader.spec();
+    println!("WAV spec: channels={}, sample_rate={}, bits_per_sample={}", 
+        spec.channels, spec.sample_rate, spec.bits_per_sample);
+
+    // サンプルデータを読み取り
+    let samples: Result<Vec<f32>, _> = wav_reader.samples::<i16>()
+        .map(|s| s.map(|sample| sample as f32 / 32768.0))
+        .collect();
+
+    let samples = match samples {
+        Ok(samples) => samples,
+        Err(e) => {
+            println!("Failed to read samples from WAV file: {}", e);
+            return String::new();
+        }
+    };
+
+    // Vorbisエンコーダーを作成
+    let mut encoder = match vorbis_encoder::Encoder::new(
+        spec.channels as u32,
+        spec.sample_rate as u64,
+        1.0 // Maximum quality (0.0 to 1.0)
+    ) {
+        Ok(encoder) => encoder,
+        Err(e) => {
+            println!("Failed to create Vorbis encoder: {}", e);
+            return String::new();
+        }
+    };
+
+    // エンコード用のバッファを準備
+    let mut output_data = Vec::new();
+
+    // f32サンプルをi16に変換
+    let i16_samples: Vec<i16> = samples.iter()
+        .map(|&sample| (sample * 32767.0).clamp(-32768.0, 32767.0) as i16)
+        .collect();
+
+    // エンコード実行
+    match encoder.encode(&i16_samples) {
+        Ok(data) => output_data.extend_from_slice(&data),
+        Err(e) => {
+            println!("Failed to encode audio data: {}", e);
+            return String::new();
+        }
+    }
+
+    // ファイナライズ
+    match encoder.flush() {
+        Ok(data) => output_data.extend_from_slice(&data),
+        Err(e) => {
+            println!("Failed to flush encoder: {}", e);
+            return String::new();
+        }
+    }
+
+    // Base64エンコード
+    base64::encode(&output_data)
 }
 
 fn search_wav_files(dir: &std::path::Path, output_files: &mut Vec<String>) -> Result<(), String> {

@@ -1187,6 +1187,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "gcc"
+version = "0.3.55"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f5f3913fa0bfe7ee1fd8248b6b9f42a5af4b9d65ec2dd2c3c26132b950ecfc2"
+
+[[package]]
 name = "gdk"
 version = "0.18.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1520,6 +1526,12 @@ name = "hex"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
+
+[[package]]
+name = "hound"
+version = "3.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "62adaabb884c94955b19907d60019f4e145d091c75345379e70d1ee696f7854f"
 
 [[package]]
 name = "html5ever"
@@ -2491,6 +2503,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "62948e14d923ea95ea2c7c86c71013138b66525b86bdc08d2dcc262bdb497b87"
 dependencies = [
  "memchr",
+]
+
+[[package]]
+name = "ogg-sys"
+version = "0.0.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a95b8c172e17df1a41bf8d666301d3b2c4efeb90d9d0415e2a4dc0668b35fdb2"
+dependencies = [
+ "gcc",
+ "libc",
+ "pkg-config",
 ]
 
 [[package]]
@@ -3626,6 +3649,7 @@ name = "souon-editor"
 version = "0.1.0"
 dependencies = [
  "base64 0.22.1",
+ "hound",
  "serde",
  "serde_json",
  "tauri",
@@ -3634,6 +3658,7 @@ dependencies = [
  "tauri-plugin-fs",
  "tauri-plugin-opener",
  "tauri-plugin-shell",
+ "vorbis-encoder",
 ]
 
 [[package]]
@@ -4612,6 +4637,31 @@ name = "version_check"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
+
+[[package]]
+name = "vorbis-encoder"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3fb66bcdde056dd230991bb86669a1269778fe8ad1f6cee403428ac7985391bc"
+dependencies = [
+ "gcc",
+ "libc",
+ "ogg-sys",
+ "pkg-config",
+ "vorbis-sys",
+]
+
+[[package]]
+name = "vorbis-sys"
+version = "0.0.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "729e1f15395850b4e6d19ca0cd1d42ef44707503a53b69d40ff49182b3c5589d"
+dependencies = [
+ "gcc",
+ "libc",
+ "ogg-sys",
+ "pkg-config",
+]
 
 [[package]]
 name = "vswhom"
