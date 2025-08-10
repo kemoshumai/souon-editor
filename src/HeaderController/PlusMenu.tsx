@@ -1,5 +1,5 @@
 import { Button, MenuContent, MenuItem, MenuRoot, MenuSelectionDetails, MenuTrigger } from "@chakra-ui/react";
-import { MdAddChart, MdMusicNote, MdSpeed } from "react-icons/md";
+import { MdAddChart, MdAutoFixHigh, MdMusicNote, MdSpeed } from "react-icons/md";
 import { PiPlus } from "react-icons/pi";
 import { open } from "@tauri-apps/plugin-dialog";
 import { copyFile } from "@tauri-apps/plugin-fs";
@@ -9,11 +9,13 @@ import Chart from "../store/chart";
 import { toaster } from "../components/ui/toaster";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import TempoEvent from "../store/tempoEvent";
+import { invoke } from "@tauri-apps/api/core";
 
 enum PlusMenuSelection {
   SetMusicFile = "set_music_file",
   AddChart = "add_chart",
-  AddTempo = "add_tempo"
+  AddTempo = "add_tempo",
+  GenerateStems = "generate_stems",
 }
 
 export default function PlusMenu() {
@@ -56,6 +58,18 @@ export default function PlusMenu() {
     store.project.musicTempoList.push(tempoEvent);
   }
 
+  const GenerateStems = async () => {
+
+    const [base64, mimeType] = await store.project.getMusicBase64();
+
+    const result = await invoke("demucs", {
+      input_base64: base64,
+      mime_type: mimeType,
+    });
+
+    console.log(result);
+  }
+
   const onSelect = (d: MenuSelectionDetails) => {
     const value = d.value;
 
@@ -69,6 +83,9 @@ export default function PlusMenu() {
       case PlusMenuSelection.AddTempo:
         AddTempo();
         break;
+      case PlusMenuSelection.GenerateStems:
+        GenerateStems();
+        break;
     }
   }
 
@@ -79,6 +96,7 @@ export default function PlusMenu() {
         <MenuItem value={PlusMenuSelection.SetMusicFile}><MdMusicNote />音楽ファイル読み込み</MenuItem>
         <MenuItem value={PlusMenuSelection.AddChart}><MdAddChart />譜面追加</MenuItem>
         <MenuItem value={PlusMenuSelection.AddTempo}><MdSpeed />テンポ情報追加</MenuItem>
+        <MenuItem value={PlusMenuSelection.GenerateStems}><MdAutoFixHigh />ステムを生成する</MenuItem>
       </MenuContent>
     </MenuRoot>
   </>);

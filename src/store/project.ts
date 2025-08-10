@@ -106,25 +106,28 @@ export default class Project {
     
     return nearest;
   }
+  
+  toBinaryString(u8Array: Uint8Array): string {
+      const chunkSize = 0x8000;
+      const c = [];
+      for (let i = 0; i < u8Array.length; i += chunkSize) {
+          c.push(String.fromCharCode(...u8Array.subarray(i, i + chunkSize)));
+      }
+      return c.join("");
+  }
 
-  async getSerialized(): Promise<string> {
-
+  async getMusicBase64(): Promise<[string, string]> {
     const data = await fetch(this.music);
     const blob = await data.blob();
     const buffer = await blob.arrayBuffer();
     const array = new Uint8Array(buffer);
-    function toBinaryString(u8Array: Uint8Array): string {
-        const chunkSize = 0x8000;
-        const c = [];
-        for (let i = 0; i < u8Array.length; i += chunkSize) {
-            c.push(String.fromCharCode(...u8Array.subarray(i, i + chunkSize)));
-        }
-        return c.join("");
-    }
+    const binaryString = this.toBinaryString(array);
+    return [btoa(binaryString), blob.type];
+  }
 
-    const binaryString = toBinaryString(array);
-    const base64 = btoa(binaryString);
-    const mimeType = blob.type; // MIMEタイプを取得
+  async getSerialized(): Promise<string> {
+
+    const [base64, mimeType] = await this.getMusicBase64();
     const mimeTypeParts = mimeType.split("/");
     const mimeTypeFull = mimeTypeParts.length > 1 ? mimeType : "application/octet-stream"; // MIMEタイプが存在しない場合はデフォルトを使用
     const music = `data:${mimeTypeFull};base64,${base64}`; // MIMEタイプを追加

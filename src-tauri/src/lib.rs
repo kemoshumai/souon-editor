@@ -131,7 +131,28 @@ fn check_demucs(app_handle: tauri::AppHandle) -> Result<String, String> {
 }
 
 #[tauri::command]
-fn demucs(app_handle: tauri::AppHandle, filepath: &str) -> Result<String, String> {
+fn demucs(app_handle: tauri::AppHandle, input_base64: &str, mime_type: &str) -> Result<String, String> {
+
+    // 入力のbase64をデコード
+    let input_data = base64::decode(input_base64).map_err(|e| format!("Failed to decode base64: {}", e))?;
+
+    // 拡張子を取得
+    let extension = match mime_type {
+        "audio/mpeg" | "audio/mp3" => "mp3",
+        "audio/wav" | "audio/wave" => "wav",
+        "audio/flac" => "flac",
+        "audio/ogg" => "ogg",
+        "audio/aac" => "aac",
+        _ => mime_type.split('/').last().unwrap_or("wav")
+    };
+
+    // 一時ファイルのパスを生成
+    let temp_file = app_handle.path()
+        .resolve(format!("demucs_input.{}", extension), tauri::path::BaseDirectory::AppLocalData)
+        .expect("Failed to resolve temporary file path");
+
+    // 一時ファイルにデータを書き込む
+    std::fs::write(&temp_file, input_data).map_err(|e| format!("Failed to write temporary file: {}", e))?;
 
     // demucs.exeのパスを取得
     let demucs_path = app_handle.path()
@@ -160,7 +181,7 @@ fn demucs(app_handle: tauri::AppHandle, filepath: &str) -> Result<String, String
 
     // demucsを実行
     let output = std::process::Command::new(&demucs_path)
-        .arg(filepath)
+        .arg(&temp_file)
         .arg("-o")
         .arg(&output_dir)
         .output()
