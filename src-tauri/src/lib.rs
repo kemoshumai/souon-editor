@@ -1,4 +1,4 @@
-use std::{process::exit, sync::Mutex};
+use std::{path::PathBuf, process::exit, sync::Mutex};
 
 use tauri::{Manager, State};
 use tauri_plugin_dialog::DialogExt;
@@ -31,6 +31,7 @@ fn check_python(app_handle: tauri::AppHandle) -> Result<String, String> {
         .expect("Failed to resolve Python executable path");
 
     println!("Python executable path: {}", resource_path.to_string_lossy());
+    println!("Python executable exists: {}", resource_path.exists());
 
     // pipのパスを取得
     let pip_path = app_handle.path()
@@ -38,9 +39,10 @@ fn check_python(app_handle: tauri::AppHandle) -> Result<String, String> {
         .expect("Failed to resolve pip executable path");
 
     println!("Pip executable path: {}", pip_path.to_string_lossy());
+    println!("Pip executable exists: {}", pip_path.exists());
 
     // pipが存在しない場合インストール
-    if !pip_path.exists() {
+    let python_script = if !pip_path.exists() {
 
         println!("Pip not found, installing...");
 
@@ -48,9 +50,21 @@ fn check_python(app_handle: tauri::AppHandle) -> Result<String, String> {
             .resolve("python_env/get-pip.py", tauri::path::BaseDirectory::Resource)
             .expect("Failed to resolve get-pip.py script path");
 
+        println!("get-pip.py path: {}", python_script.to_string_lossy());
+        println!("get-pip.py exists: {}", python_script.exists());
+
+        // Pythonの実行可能性をチェック
+        if !resource_path.exists() {
+            return Err(format!("Python executable not found at: {}", resource_path.to_string_lossy()));
+        }
+
+        if !python_script.exists() {
+            return Err(format!("get-pip.py script not found at: {}", python_script.to_string_lossy()));
+        }
+
         // Pythonを実行してpipをインストール
         let mut command = std::process::Command::new(&resource_path);
-        let command = command.arg(python_script);
+        let command = command.arg(&python_script);
 
         #[cfg(target_os = "windows")]
         {
@@ -59,16 +73,25 @@ fn check_python(app_handle: tauri::AppHandle) -> Result<String, String> {
         }
 
         let output = command.output()
-            .map_err(|e| format!("Failed to execute Python script: {}", e))?;
+            .map_err(|e| format!("Failed to execute Python script: {} (command: {} {})", 
+                e, resource_path.to_string_lossy(), python_script.to_string_lossy()))?;
+
+        println!("pip install stdout: {}", String::from_utf8_lossy(&output.stdout));
+        println!("pip install stderr: {}", String::from_utf8_lossy(&output.stderr));
 
         if !output.status.success() {
             return Err(format!("Failed to install pip: {}", String::from_utf8_lossy(&output.stderr)));
         }
         
-    }
+        python_script
+    } else {
+        PathBuf::new()
+    };
 
-    // python.exeの絶対パスを返す
-    Ok(resource_path.to_string_lossy().to_string())
+    // 全部の絶対パスを"\n"区切りで返す
+    Ok(
+        format!("{}\n{}\n{}", resource_path.to_string_lossy(), pip_path.to_string_lossy(), python_script.to_string_lossy())
+    )
 }
 
 #[tauri::command]
@@ -83,6 +106,7 @@ fn check_demucs(app_handle: tauri::AppHandle) -> Result<String, String> {
         .expect("Failed to resolve demucs executable path");
 
     println!("Demucs executable path: {}", demucs_path.to_string_lossy());
+    println!("Demucs executable exists: {}", demucs_path.exists());
 
     // demucsが存在しない場合インストール
     if !demucs_path.exists() {
@@ -92,6 +116,12 @@ fn check_demucs(app_handle: tauri::AppHandle) -> Result<String, String> {
             .expect("Failed to resolve Python executable path");
 
         println!("Demucs not found, installing...");
+        println!("Using Python at: {}", resource_path.to_string_lossy());
+
+        // Pythonの実行可能性をチェック
+        if !resource_path.exists() {
+            return Err(format!("Python executable not found at: {}", resource_path.to_string_lossy()));
+        }
 
         // Pythonを実行し依存関係をインストール（python.exe -m pip install --upgrade setuptools wheel）
         let mut command = std::process::Command::new(&resource_path);
@@ -112,7 +142,11 @@ fn check_demucs(app_handle: tauri::AppHandle) -> Result<String, String> {
         
         let output = command
             .output()
-            .map_err(|e| format!("Failed to execute Python script: {}", e))?;
+            .map_err(|e| format!("Failed to execute Python script for dependencies: {} (command: {} -m pip install --upgrade setuptools wheel soundfile)", 
+                e, resource_path.to_string_lossy()))?;
+
+        println!("Dependencies install stdout: {}", String::from_utf8_lossy(&output.stdout));
+        println!("Dependencies install stderr: {}", String::from_utf8_lossy(&output.stderr));
 
         if !output.status.success() {
             return Err(format!("Failed to install dependencies: {}", String::from_utf8_lossy(&output.stderr)));
@@ -137,18 +171,19 @@ fn check_demucs(app_handle: tauri::AppHandle) -> Result<String, String> {
 
         let output = command
             .output()
-            .map_err(|e| format!("Failed to execute Python script: {}", e))?;
+            .map_err(|e| format!("Failed to execute Python script for demucs: {} (command: {} -m pip install --upgrade demucs)", 
+                e, resource_path.to_string_lossy()))?;
 
         // stdoutとstderrを出力
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
         
         if !stdout.is_empty() {
-            println!("[STDOUT] {}", stdout);
+            println!("[DEMUCS INSTALL STDOUT] {}", stdout);
         }
         
         if !stderr.is_empty() {
-            println!("[STDERR] {}", stderr);
+            println!("[DEMUCS INSTALL STDERR] {}", stderr);
         }
 
         if !output.status.success() {
