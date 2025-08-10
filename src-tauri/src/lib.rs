@@ -2,7 +2,6 @@ use std::{process::exit, sync::Mutex};
 
 use tauri::{Manager, State};
 use tauri_plugin_dialog::DialogExt;
-use std::io::{BufRead, BufReader};
 
 #[tauri::command]
 async fn set_title(window: tauri::Window, title: &str) -> Result<(), tauri::Error> {
@@ -98,30 +97,30 @@ fn check_demucs(app_handle: tauri::AppHandle) -> Result<String, String> {
         }
 
         // demucsをインストール
-        let mut child = std::process::Command::new(&resource_path)
+        let output = std::process::Command::new(&resource_path)
             .arg("-m")
             .arg("pip")
             .arg("install")
             .arg("--upgrade")
             .arg("demucs")
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped())
-            .spawn()
+            .output()
             .map_err(|e| format!("Failed to execute Python script: {}", e))?;
 
-        // stdoutとstderrをリアルタイムで出力
-        if let Some(stdout) = child.stdout.take() {
-            let reader = BufReader::new(stdout);
-            for line in reader.lines().map_while(Result::ok) {
-                println!("[STDOUT] {}", line);
-            }
+        // stdoutとstderrを出力
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        
+        if !stdout.is_empty() {
+            println!("[STDOUT] {}", stdout);
+        }
+        
+        if !stderr.is_empty() {
+            println!("[STDERR] {}", stderr);
         }
 
-        let exit_status = child.wait()
-            .map_err(|e| format!("Failed to wait for process: {}", e))?;
-
-        if !exit_status.success() {
-            return Err(format!("Failed to install demucs: exit code {}", exit_status.code().unwrap_or(-1)));
+        if !output.status.success() {
+            return Err(format!("Failed to install demucs: exit code {}. Error: {}", 
+                output.status.code().unwrap_or(-1), stderr));
         }
     }
 
