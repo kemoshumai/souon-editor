@@ -24,6 +24,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Checkout assets repository
+        uses: actions/checkout@v4
+        with:
+          repository: kemoshumai/souon-editor-moca-voice
+          token: ${{ secrets.ASSETS_PAT }}
+          path: public/moca/voice
+
+
       - uses: chetan/git-restore-mtime-action@v2
 
       - uses: actions/cache@v4
