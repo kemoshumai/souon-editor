@@ -32,3 +32,10 @@ tauri-plugin-log = "2"
 log = "0.4"
 reqwest = { version = "0.12", features = ["blocking"] }
 zip = "2.1"
+
+[profile.release]
+panic = "abort"   # パニック時のスタックトレース情報を削除
+codegen-units = 1 # 最適化の効率を向上
+lto = true        # リンク時の最適化を有効化
+opt-level = "z"   # サイズを最優先で最適化
+strip = true      # デバッグシンボルを削除
