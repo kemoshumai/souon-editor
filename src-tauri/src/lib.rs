@@ -1,4 +1,4 @@
-use std::{path::PathBuf, process::exit, sync::Mutex};
+use std::{path::PathBuf, process::exit, sync::Mutex, io::Write};
 
 use base64::{engine::general_purpose, Engine as _};
 use tauri::{Manager, State};
@@ -7,22 +7,81 @@ use tauri_plugin_dialog::DialogExt;
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
 
-// ディレクトリを再帰的にコピーするヘルパー関数
-fn copy_dir_recursive(src: &std::path::Path, dst: &std::path::Path) -> std::io::Result<()> {
-    std::fs::create_dir_all(dst)?;
-
-    for entry in std::fs::read_dir(src)? {
-        let entry = entry?;
-        let path = entry.path();
-        let dest_path = dst.join(entry.file_name());
-
-        if path.is_dir() {
-            copy_dir_recursive(&path, &dest_path)?;
+// Python環境をダウンロードして展開する関数
+fn download_and_extract_python(local_python_dir: &std::path::Path) -> Result<(), String> {
+    log::info!("Downloading Python environment from URL...");
+    
+    const PYTHON_URL: &str = "https://www.python.org/ftp/python/3.13.6/python-3.13.6-embed-amd64.zip";
+    
+    // 一時ファイルのパスを生成
+    let temp_zip_path = local_python_dir.parent()
+        .ok_or("Failed to get parent directory")?
+        .join("python_temp.zip");
+    
+    // AppLocalDataディレクトリが存在しない場合は作成
+    if let Some(parent) = local_python_dir.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| format!("Failed to create AppLocalData directory: {}", e))?;
+    }
+    
+    // Pythonのzipファイルをダウンロード
+    log::info!("Downloading Python from: {}", PYTHON_URL);
+    let response = reqwest::blocking::get(PYTHON_URL)
+        .map_err(|e| format!("Failed to download Python: {}", e))?;
+    
+    if !response.status().is_success() {
+        return Err(format!("Failed to download Python: HTTP {}", response.status()));
+    }
+    
+    let content = response.bytes()
+        .map_err(|e| format!("Failed to read download content: {}", e))?;
+    
+    // 一時ファイルに保存
+    log::info!("Saving downloaded file to: {}", temp_zip_path.display());
+    let mut temp_file = std::fs::File::create(&temp_zip_path)
+        .map_err(|e| format!("Failed to create temporary file: {}", e))?;
+    temp_file.write_all(&content)
+        .map_err(|e| format!("Failed to write to temporary file: {}", e))?;
+    
+    // zipファイルを展開
+    log::info!("Extracting Python to: {}", local_python_dir.display());
+    let file = std::fs::File::open(&temp_zip_path)
+        .map_err(|e| format!("Failed to open zip file: {}", e))?;
+    let mut archive = zip::ZipArchive::new(file)
+        .map_err(|e| format!("Failed to read zip archive: {}", e))?;
+    
+    std::fs::create_dir_all(local_python_dir)
+        .map_err(|e| format!("Failed to create Python directory: {}", e))?;
+    
+    for i in 0..archive.len() {
+        let mut file = archive.by_index(i)
+            .map_err(|e| format!("Failed to read file from archive: {}", e))?;
+        let outpath = match file.enclosed_name() {
+            Some(path) => local_python_dir.join(path),
+            None => continue,
+        };
+        
+        if file.name().ends_with('/') {
+            std::fs::create_dir_all(&outpath)
+                .map_err(|e| format!("Failed to create directory: {}", e))?;
         } else {
-            std::fs::copy(&path, &dest_path)?;
+            if let Some(p) = outpath.parent() {
+                if !p.exists() {
+                    std::fs::create_dir_all(p)
+                        .map_err(|e| format!("Failed to create parent directory: {}", e))?;
+                }
+            }
+            let mut outfile = std::fs::File::create(&outpath)
+                .map_err(|e| format!("Failed to create output file: {}", e))?;
+            std::io::copy(&mut file, &mut outfile)
+                .map_err(|e| format!("Failed to extract file: {}", e))?;
         }
     }
-
+    
+    // 一時ファイルを削除
+    let _ = std::fs::remove_file(&temp_zip_path);
+    
+    log::info!("Python environment downloaded and extracted successfully");
     Ok(())
 }
 
@@ -53,39 +112,21 @@ fn check_python(app_handle: tauri::AppHandle) -> Result<String, String> {
 
 
 
-    // AppLocalDataにPython環境が存在しない場合、Resourceからコピー
+    // AppLocalDataにPython環境が存在しない場合、URLからダウンロード
     if !local_python_path.exists() {
-        log::info!("Local Python environment not found, copying from bundle...");
-
-        let resource_python_dir = app_handle
-            .path()
-            .resolve("python_env", tauri::path::BaseDirectory::Resource)
-            .expect("Failed to resolve bundled Python directory path");
+        log::info!("Local Python environment not found, downloading from URL...");
 
         let local_python_dir = app_handle
             .path()
             .resolve("python_env", tauri::path::BaseDirectory::AppLocalData)
             .expect("Failed to resolve local Python directory path");
 
-        if !resource_python_dir.exists() {
-            return Err(format!(
-                "Bundled Python environment not found at: {}",
-                resource_python_dir.to_string_lossy()
-            ));
-        }
-
-        // AppLocalDataディレクトリが存在しない場合は作成
-        if let Some(parent) = local_python_dir.parent() {
-            std::fs::create_dir_all(parent)
-                .map_err(|e| format!("Failed to create AppLocalData directory: {}", e))?;
-        }
-
-        // Python環境をコピー
-        copy_dir_recursive(&resource_python_dir, &local_python_dir)
-            .map_err(|e| format!("Failed to copy Python environment: {}", e))?;
+        // Python環境をダウンロードして展開
+        download_and_extract_python(&local_python_dir)
+            .map_err(|e| format!("Failed to download and extract Python environment: {}", e))?;
 
         log::info!(
-            "Python environment copied to: {}",
+            "Python environment downloaded to: {}",
             local_python_dir.to_string_lossy()
         );
     }
@@ -117,6 +158,50 @@ fn check_python(app_handle: tauri::AppHandle) -> Result<String, String> {
                 tauri::path::BaseDirectory::AppLocalData,
             )
             .expect("Failed to resolve get-pip.py script path");
+
+        // get-pip.pyが存在しない場合はダウンロード
+        if !python_script.exists() {
+            log::info!("get-pip.py not found, downloading...");
+            const GET_PIP_URL: &str = "https://bootstrap.pypa.io/get-pip.py";
+            
+            let response = reqwest::blocking::get(GET_PIP_URL)
+                .map_err(|e| format!("Failed to download get-pip.py: {}", e))?;
+            
+            if !response.status().is_success() {
+                return Err(format!("Failed to download get-pip.py: HTTP {}", response.status()));
+            }
+            
+            let content = response.text()
+                .map_err(|e| format!("Failed to read get-pip.py content: {}", e))?;
+            
+            std::fs::write(&python_script, content)
+                .map_err(|e| format!("Failed to save get-pip.py: {}", e))?;
+            
+            log::info!("get-pip.py downloaded successfully");
+        }
+
+        // python313._pthファイルに"import site"を追記してpipを有効化
+        let pth_file_path = app_handle
+            .path()
+            .resolve(
+                "python_env/python313._pth",
+                tauri::path::BaseDirectory::AppLocalData,
+            )
+            .expect("Failed to resolve python313._pth path");
+
+        log::info!("Checking python313._pth file at: {}", pth_file_path.display());
+        
+        if pth_file_path.exists() {
+            // python313._pthの内容を標準的な形式に設定
+            let correct_pth_content = "python313.zip\n.\nimport site";
+            
+            log::info!("Setting python313._pth to standard format");
+            std::fs::write(&pth_file_path, correct_pth_content)
+                .map_err(|e| format!("Failed to update python313._pth: {}", e))?;
+            log::info!("Successfully updated python313._pth with standard content");
+        } else {
+            log::warn!("python313._pth file not found at: {}", pth_file_path.display());
+        }
 
         log::info!("get-pip.py path: {}", python_script.to_string_lossy());
         log::info!("get-pip.py exists: {}", python_script.exists());

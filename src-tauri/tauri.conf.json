@@ -26,9 +26,6 @@
     }
   },
   "bundle": {
-    "resources": [
-      "python_env"
-    ],
     "active": true,
     "targets": "all",
     "icon": [
