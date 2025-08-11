@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import SaveSystem from './SaveSystem';
 import SplashScreen from './SplashScreen';
 import PythonEnv from './PythonEnv';
+import Moca from './Moca';
 
 function App() {
 
@@ -36,6 +37,7 @@ function App() {
       </Flex>
       <PythonEnv />
       <SplashScreen />
+      <Moca />
     </Theme>
   </>);
 }

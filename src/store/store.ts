@@ -18,6 +18,7 @@ interface Store {
     other: boolean;
     vocals: boolean;
   };
+  moca: boolean;
 }
 
 const store = proxy<Store>({
@@ -35,7 +36,8 @@ const store = proxy<Store>({
     drums: false,
     other: false,
     vocals: false
-  }
+  },
+  moca: false
 });
 
 (async () => {

@@ -6,14 +6,18 @@ import * as path from '@tauri-apps/api/path';
 import { copyFile } from "@tauri-apps/plugin-fs";
 import store from "../store/store";
 import { toaster } from "../components/ui/toaster";
+import { useSnapshot } from "valtio";
 
 enum PlusMenuSelection {
   SetBackground = "set_background",
   SetBackgroundBlur = "set_background_blur",
-  ResetBackground = "reset_background"
+  ResetBackground = "reset_background",
+  ToggleMoca = "toggle_moca",
 }
 
 export default function SettingsMenu() {
+
+  const snap = useSnapshot(store);
 
   const onSelect = (d: MenuSelectionDetails) => {
     const value = d.value;
@@ -79,6 +83,10 @@ export default function SettingsMenu() {
       case PlusMenuSelection.ResetBackground:
         ResetBackground();
         break;
+
+      case PlusMenuSelection.ToggleMoca:
+        store.moca = !store.moca;
+        break;
     }
   }
 
@@ -89,6 +97,7 @@ export default function SettingsMenu() {
         <MenuItem value={PlusMenuSelection.SetBackground}><MdMusicNote />背景画像設定</MenuItem>
         <MenuItem value={PlusMenuSelection.SetBackgroundBlur}>背景のぼかし設定</MenuItem>
         <MenuItem value={PlusMenuSelection.ResetBackground}>背景設定をリセット</MenuItem>
+        <MenuItem value={PlusMenuSelection.ToggleMoca}>宮舞を{snap.moca ? "消す" : "呼ぶ"}</MenuItem>
       </MenuContent>
     </MenuRoot>
   </>);
