@@ -13,7 +13,7 @@ export const drawWaveform = async (
 ): Promise<void> => {
   if (!canvas || !audioUrl) return;
 
-  canvas.height = 8000;
+  canvas.height = 16000;
 
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
