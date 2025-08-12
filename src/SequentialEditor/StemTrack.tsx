@@ -1,9 +1,10 @@
-import { Button, Center, HStack, Stack, Text, VStack } from "@chakra-ui/react";
+import { Center, HStack, Stack, Text } from "@chakra-ui/react";
 import { useSnapshot } from "valtio";
 import store from "../store/store";
 import Track from "./Track";
 import { useRef } from "react";
 import { useAsync } from "react-use";
+import { drawWaveform } from "../utils/waveformRenderer";
 
 export default function StemTrack() {
   const snap = useSnapshot(store);
@@ -13,68 +14,29 @@ export default function StemTrack() {
   const otherCanvasRef = useRef<HTMLCanvasElement>(null);
   const vocalsCanvasRef = useRef<HTMLCanvasElement>(null);
 
-  const drawWaveform = async (canvas: HTMLCanvasElement, audioUrl: string) => {
-    if (!canvas || !audioUrl) return;
 
-    canvas.height = 8000;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    try {
-      const audio = await (await fetch(audioUrl)).arrayBuffer();
-      const audioContext = new AudioContext();
-      const buffer = await audioContext.decodeAudioData(audio);
-
-      const channel = buffer.getChannelData(0);
-
-      const centerX = canvas.width / 2;
-      ctx.strokeStyle = "#fff";
-      ctx.fillStyle = "#000";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      const totalSamples = channel.length;
-      for (let i = 0; i < canvas.height; i += 1) {
-        const percent = i / canvas.height;
-        const sampleIndex = Math.floor(percent * totalSamples);
-        const sample = channel[sampleIndex];
-        const amplitude = Math.abs(sample);
-        // Scale amplitude to half the canvas width
-        const xOffset = amplitude * centerX;
-        // Map i so that 0 is at the bottom and canvas.height at the top
-        const y = canvas.height - i;
-        
-        ctx.beginPath();
-        ctx.moveTo(centerX - xOffset, y);
-        ctx.lineTo(centerX + xOffset, y);
-        ctx.stroke();
-      }
-    } catch (error) {
-      console.error("Error drawing waveform:", error);
-    }
-  };
 
   useAsync(async () => {
     if (bassCanvasRef.current && snap.project.stems.bass) {
-      await drawWaveform(bassCanvasRef.current, snap.project.stems.bass);
+      await drawWaveform(bassCanvasRef.current, snap.project.stems.bass, "#ff6b6b"); // 赤系 - Bass
     }
   }, [snap.project.stems.bass]);
 
   useAsync(async () => {
     if (drumsCanvasRef.current && snap.project.stems.drums) {
-      await drawWaveform(drumsCanvasRef.current, snap.project.stems.drums);
+      await drawWaveform(drumsCanvasRef.current, snap.project.stems.drums, "#4ecdc4"); // 青緑系 - Drums
     }
   }, [snap.project.stems.drums]);
 
   useAsync(async () => {
     if (otherCanvasRef.current && snap.project.stems.other) {
-      await drawWaveform(otherCanvasRef.current, snap.project.stems.other);
+      await drawWaveform(otherCanvasRef.current, snap.project.stems.other, "#27ae60"); // 緑系 - Other
     }
   }, [snap.project.stems.other]);
 
   useAsync(async () => {
     if (vocalsCanvasRef.current && snap.project.stems.vocals) {
-      await drawWaveform(vocalsCanvasRef.current, snap.project.stems.vocals);
+      await drawWaveform(vocalsCanvasRef.current, snap.project.stems.vocals, "#f9ca24"); // 黄色系 - Vocals
     }
   }, [snap.project.stems.vocals]);
 
