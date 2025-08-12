@@ -12,6 +12,7 @@ import { toaster } from "./components/ui/toaster";
 import PlayingBarContainer from "./SequentialEditor/PlayingBarContainer";
 import { scrollTo, scrollToByPercent } from "./eventBus";
 import Background from "./Background";
+import StemTrack from "./SequentialEditor/StemTrack";
 
 export default function SequentialEditor() {
 
@@ -20,7 +21,7 @@ export default function SequentialEditor() {
   const sensors = useSensors( useSensor(PointerSensor), useSensor(TouchSensor) );
 
   useEffect(() => {
-    store.items = ["MUSIC", "TEMPO", ...snap.project.charts.map(c => c.uuid)];
+    store.items = ["MUSIC", "TEMPO", "STEMS", ...snap.project.charts.map(c => c.uuid)];
   }, [snap.project.charts]);
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -114,6 +115,7 @@ export default function SequentialEditor() {
                 {(chart) => (
                   chart === "MUSIC" ? <MusicTrack key={"MUSIC"} /> :
                   chart === "TEMPO" ? <TempoTrack key={"TEMPO"} /> :
+                  chart === "STEMS" ? <StemTrack key={"STEMS"} /> :
                   <ChartTrack key={chart} uuid={chart} />
                 )}
               </For>
