@@ -33,6 +33,7 @@ log = "0.4"
 reqwest = { version = "0.12", features = ["blocking"] }
 zip = "2.1"
 aubio-rs = "0.2.0"
+symphonia = "0.5.4"
 
 [profile.release]
 panic = "abort"   # パニック時のスタックトレース情報を削除

@@ -18,6 +18,7 @@ enum PlusMenuSelection {
   AddChart = "add_chart",
   AddTempo = "add_tempo",
   GenerateStems = "generate_stems",
+  GenerateOnsets = "generate_onsets",
 }
 
 export default function PlusMenu() {
@@ -101,6 +102,12 @@ export default function PlusMenu() {
     }
   }
 
+  const GenerateOnsets = async () => {
+    await invoke("onset", {
+      inputBase64OggVorbis: store.project.stems.bass
+    });
+  }
+
   const onSelect = (d: MenuSelectionDetails) => {
     const value = d.value;
 
@@ -117,6 +124,9 @@ export default function PlusMenu() {
       case PlusMenuSelection.GenerateStems:
         GenerateStems();
         break;
+      case PlusMenuSelection.GenerateOnsets:
+        GenerateOnsets();
+        break;
     }
   }
 
@@ -128,6 +138,7 @@ export default function PlusMenu() {
         <MenuItem value={PlusMenuSelection.AddChart}><MdAddChart />譜面追加</MenuItem>
         <MenuItem value={PlusMenuSelection.AddTempo}><MdSpeed />テンポ情報追加</MenuItem>
         <MenuItem value={PlusMenuSelection.GenerateStems}><MdAutoFixHigh />ステムを生成する</MenuItem>
+        <MenuItem value={PlusMenuSelection.GenerateOnsets}><MdMusicNote />オンセットを生成する</MenuItem>
       </MenuContent>
     </MenuRoot>
 
