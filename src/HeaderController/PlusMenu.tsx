@@ -24,6 +24,8 @@ enum PlusMenuSelection {
 export default function PlusMenu() {
   const [showStemConfirmDialog, setShowStemConfirmDialog] = useState(false);
   const [isStemGenerating, setIsStemGenerating] = useState(false);
+  const [showOnsetConfirmDialog, setShowOnsetConfirmDialog] = useState(false);
+  const [isOnsetGenerating, setIsOnsetGenerating] = useState(false);
 
   const AddChart = () => {
     const chart = new Chart(crypto.randomUUID(), [], 12, "新しい譜面");
@@ -103,9 +105,51 @@ export default function PlusMenu() {
   }
 
   const GenerateOnsets = async () => {
-    await invoke("onset", {
-      inputBase64OggVorbis: store.project.stems.bass
-    });
+    setShowOnsetConfirmDialog(true);
+  }
+
+  const handleConfirmOnsetGeneration = async () => {
+    setShowOnsetConfirmDialog(false);
+    setIsOnsetGenerating(true);
+
+    try {
+      const stemTypes = ['bass', 'drums', 'other', 'vocals'] as const;
+
+      const stemNotes: { [key in typeof stemTypes[number]]: { pitch: number; velocity: number; time: number }[] } = {
+        bass: [],
+        drums: [],
+        other: [],
+        vocals: [],
+      };
+
+      for (const stemType of stemTypes) {
+
+        const result: [number, number, number][] = await invoke("onset", {
+          inputBase64OggVorbis: store.project.stems[stemType]
+        });
+
+        for (const [pitch, velocity, time] of result) {
+          stemNotes[stemType].push({ pitch, velocity, time });
+        }
+      }
+
+      store.stemNotes = stemNotes;
+
+      toaster.create({ 
+        title: "オンセット検出完了", 
+        description: "オンセットの検出が正常に完了しました。", 
+        type: "success" 
+      });
+    } catch (error) {
+      toaster.create({ 
+        title: "オンセット検出エラー", 
+        description: "オンセットの検出中にエラーが発生しました。", 
+        type: "error" 
+      });
+      console.error("Onset detection error:", error);
+    } finally {
+      setIsOnsetGenerating(false);
+    }
   }
 
   const onSelect = (d: MenuSelectionDetails) => {
@@ -175,6 +219,44 @@ export default function PlusMenu() {
           <Box display="flex" alignItems="center" gap={4}>
             <Spinner size="lg" />
             <Text>ステムを作成しています。コーヒーでも飲んでてください...</Text>
+          </Box>
+        </DialogBody>
+      </DialogContent>
+    </DialogRoot>
+
+    {/* オンセット検出確認ダイアログ */}
+    <DialogRoot open={showOnsetConfirmDialog} onOpenChange={(details) => setShowOnsetConfirmDialog(details.open)}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>オンセット検出の確認</DialogTitle>
+          <DialogCloseTrigger />
+        </DialogHeader>
+        <DialogBody>
+          <DialogDescription>
+            オンセットを検出しますか？この処理には時間がかかる場合があります。
+          </DialogDescription>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setShowOnsetConfirmDialog(false)}>
+            キャンセル
+          </Button>
+          <Button onClick={handleConfirmOnsetGeneration}>
+            OK
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </DialogRoot>
+
+    {/* オンセット検出中画面 */}
+    <DialogRoot open={isOnsetGenerating} onOpenChange={() => {}}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>オンセットを検出中</DialogTitle>
+        </DialogHeader>
+        <DialogBody>
+          <Box display="flex" alignItems="center" gap={4}>
+            <Spinner size="lg" />
+            <Text>オンセットを検出しています。紅茶でも飲んでてください...</Text>
           </Box>
         </DialogBody>
       </DialogContent>

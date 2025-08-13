@@ -63,6 +63,7 @@ export default function StemTrack() {
     <Track uuid={"STEMS"} header={header} w={100}>
       <div 
         style={{
+          position: "relative",
           display: "flex",
           width: "100%",
           height: "100%",
@@ -70,68 +71,72 @@ export default function StemTrack() {
         onClick={handleClick}
       >
         {/* Bass - B */}
-        <canvas 
-          width={25} 
-          style={{
-            position: "relative",
-            top: 0,
-            left: 0,
-            bottom: 0,
-            width: "25%",
-            height: "100%",
-            imageRendering: "pixelated",
-            backgroundColor: snap.project.stems.bass ? "transparent" : "#333",
-          }}
-          ref={bassCanvasRef}
-        />
+        <div style={{ position: "relative", width: "25%", height: "100%" }}>
+          <canvas 
+            width={25} 
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              imageRendering: "pixelated",
+              backgroundColor: snap.project.stems.bass ? "transparent" : "#333",
+            }}
+            ref={bassCanvasRef}
+          />
+        </div>
         
         {/* Drums - D */}
-        <canvas 
-          width={25} 
-          style={{
-            position: "relative",
-            top: 0,
-            left: 0,
-            bottom: 0,
-            width: "25%",
-            height: "100%",
-            imageRendering: "pixelated",
-            backgroundColor: snap.project.stems.drums ? "transparent" : "#333",
-          }}
-          ref={drumsCanvasRef}
-        />
+        <div style={{ position: "relative", width: "25%", height: "100%" }}>
+          <canvas 
+            width={25} 
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              imageRendering: "pixelated",
+              backgroundColor: snap.project.stems.drums ? "transparent" : "#333",
+            }}
+            ref={drumsCanvasRef}
+          />
+        </div>
         
         {/* Other - O */}
-        <canvas 
-          width={25} 
-          style={{
-            position: "relative",
-            top: 0,
-            left: 0,
-            bottom: 0,
-            width: "25%",
-            height: "100%",
-            imageRendering: "pixelated",
-            backgroundColor: snap.project.stems.other ? "transparent" : "#333",
-          }}
-          ref={otherCanvasRef}
-        />
+        <div style={{ position: "relative", width: "25%", height: "100%" }}>
+          <canvas 
+            width={25} 
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              imageRendering: "pixelated",
+              backgroundColor: snap.project.stems.other ? "transparent" : "#333",
+            }}
+            ref={otherCanvasRef}
+          />
+        </div>
         
         {/* Vocals - V */}
-        <canvas 
-          width={25} 
-          style={{
-            position: "relative",
-            top: 0,
-            left: 0,
-            bottom: 0,
-            width: "25%",
-            height: "100%",
-            imageRendering: "pixelated",
-            backgroundColor: snap.project.stems.vocals ? "transparent" : "#333",
-          }}
-          ref={vocalsCanvasRef}
-        />
+        <div style={{ position: "relative", width: "25%", height: "100%" }}>
+          <canvas 
+            width={25} 
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              imageRendering: "pixelated",
+              backgroundColor: snap.project.stems.vocals ? "transparent" : "#333",
+            }}
+            ref={vocalsCanvasRef}
+          />
+        </div>
       </div>
     </Track>
   );

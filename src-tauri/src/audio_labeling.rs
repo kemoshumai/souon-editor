@@ -9,15 +9,15 @@ use std::io::Cursor;
 use aubio_rs::{Notes, Smpl};
 
 // 定数の定義
-const BUF_SIZE: usize = 1024;
-const HOP_SIZE: usize = 512;
-const I16_TO_SMPL: f32 = 1.0 / 32768.0;
+const BUF_SIZE: usize = 512;
+const HOP_SIZE: usize = 256;
+const I16_TO_SMPL: Smpl = 1.0 / (1 << 16) as Smpl;
 
 #[tauri::command]
 pub fn onset(
     _app_handle: tauri::AppHandle,
     input_base64_ogg_vorbis: &str
-) -> Result<(), String> {
+) -> Result<Vec<[f64; 3]>, String> {
 
     log::info!("Running onset detection with input base64 OGG Vorbis data");
 
@@ -149,6 +149,8 @@ pub fn onset(
 
     log::info!("Extracted audio samples: {}", audio_samples.len());
 
+    let mut results_f64: Vec<[f64; 3]> = Vec::new();
+
     // HOP_SIZEずつ処理
     let mut sample_index = 0;
     while sample_index + HOP_SIZE <= audio_samples.len() {
@@ -158,14 +160,14 @@ pub fn onset(
             .map_err(|e| format!("Notes processing error: {:?}", e))?;
             
         for note in results {
-            log::info!("{:>8.2}, {:>8.2}, {:>8.6}", note.pitch, note.velocity, time);
+            results_f64.push([note.pitch as f64, note.velocity as f64, time]);
         }
 
         offset += HOP_SIZE;
-        time = offset as Smpl * period;
+        time = (offset as Smpl * period) as f64;
         sample_index += HOP_SIZE;
     }
 
     log::info!("{}", time);
-    Ok(())
+    Ok(results_f64)
 }
