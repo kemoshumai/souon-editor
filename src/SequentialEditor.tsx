@@ -8,7 +8,6 @@ import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
 import { useEffect, useRef } from "react";
 import MusicTrack from "./SequentialEditor/MusicTrack";
 import TempoTrack from "./SequentialEditor/TempoTrack";
-import { toaster } from "./components/ui/toaster";
 import PlayingBarContainer from "./SequentialEditor/PlayingBarContainer";
 import { scrollTo, scrollToByPercent } from "./eventBus";
 import Background from "./Background";
@@ -38,48 +37,81 @@ export default function SequentialEditor() {
     
   };
 
-  const zoom = (element: HTMLDivElement, delta: number, clientY: number) => {
-
-    toaster.create({
-      title: "ズームしました",
-      description: "マウスの位置を中心に拡大・縮小します",
-      type: "info"
-    });
-
+  const zoom = (element: HTMLDivElement, delta: number, mouseY: number) => {
     const rect = element.getBoundingClientRect();
     const scrollTop = element.scrollTop;
-    const offsetY = clientY - rect.top + scrollTop;
-    const oldTimePos = snap.project.getTemporalPosition(offsetY);
+    
+    // マウス位置を要素内の相対座標に変換
+    const relativeY = mouseY - rect.top;
+    const absoluteY = relativeY + scrollTop;
+    
+    // 現在のマウス位置での時間位置を取得
+    const oldTimePos = snap.project.getTemporalPosition(absoluteY);
+    const oldZoomScale = store.project.zoomScale;
 
-    store.project.zoomScale = Math.max(0.01, store.project.zoomScale - delta * 0.001);
+    // ズーム感度を調整し、最小・最大値を設定
+    const zoomSensitivity = 0.002;
+    const minZoom = 0.1;
+    const maxZoom = 50;
+    
+    const zoomFactor = 1 - delta * zoomSensitivity;
+    const newZoomScale = Math.max(minZoom, Math.min(maxZoom, oldZoomScale * zoomFactor));
+    
+    console.log("Zoom calculation:", {
+      oldZoomScale,
+      newZoomScale,
+      zoomFactor,
+      relativeY,
+      absoluteY,
+      scrollTop
+    });
+    
+    // ズームスケールを更新
+    store.project.zoomScale = newZoomScale;
 
-    const newOffsetY = store.project.getCoordinatePositionFromTemporalPosition(oldTimePos);
-    element.scrollTop = Math.max(0, scrollTop + newOffsetY - offsetY);
+    // 同じ時間位置での新しいY座標を計算
+    const newAbsoluteY = store.project.getCoordinatePositionFromTemporalPosition(oldTimePos);
+    
+    // マウス位置が変わらないようにスクロール位置を調整
+    const newScrollTop = newAbsoluteY - relativeY;
+    element.scrollTop = Math.max(0, newScrollTop);
+    
+    console.log("Final positions:", {
+      oldAbsoluteY: absoluteY,
+      newAbsoluteY,
+      newScrollTop,
+      shouldStayAtRelativeY: relativeY
+    });
   }
 
   const lastWheelRef = useRef<number>(0);
 
-  const onWheel = (e: WheelEvent) => {
-    if (Date.now() - lastWheelRef.current < 100) return;
-    lastWheelRef.current = Date.now();
+  const onWheel = (e: React.WheelEvent) => {
+    // Ctrlキーが押されていない場合は何もしない
     if(!e.ctrlKey) return;
+    
+    if (Date.now() - lastWheelRef.current < 16) return; // 60FPSに制限
+    lastWheelRef.current = Date.now();
+    
+    // Ctrlキーが押されている場合のみpreventDefault
     e.preventDefault();
+    
     const delta = e.deltaY;
     const element = e.currentTarget as HTMLDivElement;
-    zoom(element, delta, e.clientY);
+    const rect = element.getBoundingClientRect();
+    
+    // より正確なマウスY位置を計算
+    const mouseY = e.clientY;
+    console.log("Raw mouse position:", { clientY: e.clientY, rectTop: rect.top });
+    
+    // 即座にズーム処理を実行（デバウンスなし）
+    zoom(element, delta, mouseY);
   }
 
   const scrollable = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if(scrollable.current) {
-      scrollable.current.addEventListener("wheel", onWheel, {passive: false});
-    }
-    return () => {
-      if(scrollable.current) {
-        scrollable.current.removeEventListener("wheel", onWheel);
-      }
-    }
-  }, [scrollable.current, onWheel]);
+    // クリーンアップ処理は特に不要
+  }, []);
 
   // mittを使って、スクロール位置を同期する
   scrollTo.on("pos", temporalPosition => {
@@ -102,7 +134,7 @@ export default function SequentialEditor() {
   return (
     <>
       <Background />
-      <Bleed flex={1} overflowX={"scroll"} overflowY={"scroll"} ref={scrollable} position={"relative"} background={"transparent"} >
+      <Bleed flex={1} overflowX={"scroll"} overflowY={"scroll"} ref={scrollable} position={"relative"} background={"transparent"} onWheel={onWheel} >
         <HStack minH={"100%"} >
           <DndContext
             sensors={sensors}

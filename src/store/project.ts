@@ -11,6 +11,13 @@ import { SpeedChangeEvent } from "./speedChangeEvent";
 import store from "./store";
 import { secondsToNanosecondsBigInt, safeBigInt } from '../utils/bigintHelpers';
 
+// プロジェクトごとのキャッシュを外部で管理
+const snappingPositionsCache = new WeakMap<Project, {
+  positions: TemporalPosition[];
+  zoomScale: number;
+  tempoListHash: string;
+}>();
+
 export default class Project {
   music: string;
   musicLength: number;
@@ -91,44 +98,81 @@ export default class Project {
     return Number(temporalPosition.nanoseconds) / 1_000_000_000 * this.zoomScale * 100;
   }
 
-  getSnappedTemporalPosition(temporalPosition: TemporalPosition): TemporalPosition {
+  private _generateSnappingPositions(): TemporalPosition[] {
     const tempoEvents = this.musicTempoList;
-    const plannedSnappingPosition = [];
+    const plannedSnappingPosition: TemporalPosition[] = [];
 
     for(const tempoEvent of tempoEvents) {
-      
       // テンポ情報の始まりの位置を取得
       const basePosition = this.getTemporalPositionFromTempoEvent(tempoEvent);
 
       // 1小節の時間を取得
       const barTemporalUnit = tempoEvent.getBarTemporalUnit();
 
-        // スナップ位置追加を小節数ぶん繰り返す
-        for(let i = 0; i < tempoEvent.length; i++) {
+      // スナップ位置追加を小節数ぶん繰り返す
+      for(let i = 0; i < tempoEvent.length; i++) {
+        // 小節の始まる位置
+        const position = basePosition.add(barTemporalUnit.multiply(safeBigInt(i)).nanoseconds);
 
-          // 小節の始まる位置
-          const position = basePosition.add(barTemporalUnit.multiply(safeBigInt(i)).nanoseconds);
+        // 1小節を分割する回数を計算
+        const resolution = Math.floor(tempoEvent.beat) * ( this.zoomScale < 3 ? 1 : 12 );
 
-          // 1小節を分割する回数を計算
-          const resolution = Math.floor(tempoEvent.beat) * ( this.zoomScale < 3 ? 1 : 12 );
+        // 1小節を分割した時間を計算
+        const dividedTemporalUnit = barTemporalUnit.divide(safeBigInt(resolution));
 
-          // 1小節を分割した時間を計算
-          const dividedTemporalUnit = barTemporalUnit.divide(safeBigInt(resolution));
+        // 分割した時間を分割数ぶん繰り返す
+        for(let j = 0; j < resolution; j++) {
+          const snappingPosition = position.add(dividedTemporalUnit.multiply(safeBigInt(j)).nanoseconds);
+          plannedSnappingPosition.push(snappingPosition);
+        }
+      }
+    }
 
-          // 分割した時間を分割数ぶん繰り返す
-          for(let j = 0; j < resolution; j++) {
-            const snappingPosition = position.add(dividedTemporalUnit.multiply(safeBigInt(j)).nanoseconds);
-            plannedSnappingPosition.push(snappingPosition);
-          }
-        }    }
+    return plannedSnappingPosition;
+  }
+
+  private _getTempoListHash(): string {
+    return JSON.stringify(this.musicTempoList.map(t => ({ uuid: t.uuid, tempo: t.tempo, beat: t.beat, length: t.length })));
+  }
+
+  clearSnappingCache(): void {
+    snappingPositionsCache.delete(this);
+  }
+
+  getSnappedTemporalPosition(temporalPosition: TemporalPosition): TemporalPosition {
+    // 外部キャッシュから取得
+    const currentTempoListHash = this._getTempoListHash();
+    let cache = snappingPositionsCache.get(this);
+    
+    // キャッシュが無効な場合は再生成
+    if (!cache || cache.zoomScale !== this.zoomScale || cache.tempoListHash !== currentTempoListHash) {
+      const positions = this._generateSnappingPositions();
+      cache = {
+        positions,
+        zoomScale: this.zoomScale,
+        tempoListHash: currentTempoListHash
+      };
+      snappingPositionsCache.set(this, cache);
+    }
+
+    const plannedSnappingPosition = cache.positions;
 
     if (plannedSnappingPosition.length === 0) {
       return temporalPosition;
     }
 
     const ns = temporalPosition.nanoseconds;
-    const diffs = plannedSnappingPosition.map(p => Math.abs(Number(p.nanoseconds - ns)));
-    const nearest = plannedSnappingPosition[diffs.indexOf(Math.min(...diffs))];
+    let minDiff = Number.MAX_VALUE;
+    let nearest = plannedSnappingPosition[0];
+    
+    // より効率的な最近隣探索
+    for (const position of plannedSnappingPosition) {
+      const diff = Math.abs(Number(position.nanoseconds - ns));
+      if (diff < minDiff) {
+        minDiff = diff;
+        nearest = position;
+      }
+    }
     
     return nearest;
   }
@@ -246,6 +290,9 @@ export default class Project {
       vocals: json.stemNotes.vocals
     };
 
+    // 外部キャッシュをクリア
+    snappingPositionsCache.delete(this);
+
     store.saved = true;
 
     console.log(this);
@@ -287,6 +334,7 @@ export default class Project {
       const tempoEvent = this.musicTempoList[index];
       this.musicTempoList.splice(index, 1);
       this.musicTempoList.splice(index + 1, 0, tempoEvent);
+      this.clearSnappingCache();
     }
   }
 
@@ -296,6 +344,7 @@ export default class Project {
       const tempoEvent = this.musicTempoList[index];
       this.musicTempoList.splice(index, 1);
       this.musicTempoList.splice(index - 1, 0, tempoEvent);
+      this.clearSnappingCache();
     }
   }
 
@@ -303,6 +352,7 @@ export default class Project {
     const index = this.musicTempoList.findIndex(t => t.uuid === uuid);
     if (index !== -1) {
       this.musicTempoList.splice(index, 1);
+      this.clearSnappingCache();
     }
   }
 

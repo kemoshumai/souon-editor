@@ -32,7 +32,6 @@ export default function ChartTrack(props: { uuid: string; }) {
   const laneWidth = 350 / 12;
 
   const handleOnClick = (e: React.MouseEvent) => {
-
     switch (e.button) {
 
       // 左クリック
