@@ -57,14 +57,10 @@ export default function SequentialEditor() {
     const zoomFactor = 1 - delta * zoomSensitivity;
     const newZoomScale = Math.max(minZoom, Math.min(maxZoom, oldZoomScale * zoomFactor));
     
-    console.log("Zoom calculation:", {
-      oldZoomScale,
-      newZoomScale,
-      zoomFactor,
-      relativeY,
-      absoluteY,
-      scrollTop
-    });
+    // 小さな変化は無視して無駄な再レンダリングを防ぐ
+    if (Math.abs(newZoomScale - oldZoomScale) < 0.001) {
+      return;
+    }
     
     // ズームスケールを更新
     store.project.zoomScale = newZoomScale;
@@ -75,42 +71,70 @@ export default function SequentialEditor() {
     // マウス位置が変わらないようにスクロール位置を調整
     const newScrollTop = newAbsoluteY - relativeY;
     element.scrollTop = Math.max(0, newScrollTop);
-    
-    console.log("Final positions:", {
-      oldAbsoluteY: absoluteY,
-      newAbsoluteY,
-      newScrollTop,
-      shouldStayAtRelativeY: relativeY
-    });
   }
 
   const lastWheelRef = useRef<number>(0);
+  const accumulatedDelta = useRef<number>(0);
+  const zoomTimeoutRef = useRef<number | null>(null);
 
   const onWheel = (e: React.WheelEvent) => {
     // Ctrlキーが押されていない場合は何もしない
     if(!e.ctrlKey) return;
     
-    if (Date.now() - lastWheelRef.current < 16) return; // 60FPSに制限
-    lastWheelRef.current = Date.now();
-    
     // Ctrlキーが押されている場合のみpreventDefault
     e.preventDefault();
     
-    const delta = e.deltaY;
+    const now = Date.now();
+    
+    // デルタ値を累積
+    accumulatedDelta.current += e.deltaY;
+    
+    // 前回のズーム処理から最低限の時間が経過していない場合は蓄積のみ
+    if (now - lastWheelRef.current < 32) { // 30FPSに制限を緩和
+      // 既存のタイムアウトをクリア
+      if (zoomTimeoutRef.current) {
+        clearTimeout(zoomTimeoutRef.current);
+      }
+      
+      // 遅延実行でズーム処理をスケジュール
+      zoomTimeoutRef.current = setTimeout(() => {
+        executeZoom(e);
+      }, 16);
+      
+      return;
+    }
+    
+    // 即座にズーム処理を実行
+    executeZoom(e);
+  }
+
+  const executeZoom = (e: React.WheelEvent) => {
+    lastWheelRef.current = Date.now();
+    
+    const delta = accumulatedDelta.current;
+    accumulatedDelta.current = 0; // リセット
+    
+    // デルタが小さすぎる場合は処理をスキップ
+    if (Math.abs(delta) < 5) {
+      return;
+    }
+    
     const element = e.currentTarget as HTMLDivElement;
-    const rect = element.getBoundingClientRect();
-    
-    // より正確なマウスY位置を計算
     const mouseY = e.clientY;
-    console.log("Raw mouse position:", { clientY: e.clientY, rectTop: rect.top });
     
-    // 即座にズーム処理を実行（デバウンスなし）
+    // ズーム処理を実行
     zoom(element, delta, mouseY);
   }
 
   const scrollable = useRef<HTMLDivElement>(null);
+  
   useEffect(() => {
-    // クリーンアップ処理は特に不要
+    // クリーンアップでタイムアウトをクリア
+    return () => {
+      if (zoomTimeoutRef.current) {
+        clearTimeout(zoomTimeoutRef.current);
+      }
+    };
   }, []);
 
   // mittを使って、スクロール位置を同期する
