@@ -62,7 +62,7 @@ export default function ChartTrackBackground(props: { chart: Chart, pattern: num
       for (let i = 0; i < barNumber; i++) {
 
         const y = canvas.height - (bottom + i * barHeight);
-        const resolution = tempoEvent.beat * (snap.project.zoomScale < 3 ? 1 : 12);
+        const resolution = tempoEvent.beat * (snap.project.zoomScale < 3 ? 1 : 4);
         const unitHeight = barHeight / resolution;
 
         for(let j = 0; j < resolution; j++) {
