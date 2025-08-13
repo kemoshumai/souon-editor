@@ -133,7 +133,7 @@ export default function PlusMenu() {
         }
       }
 
-      store.stemNotes = stemNotes;
+      store.project.stemNotes = stemNotes;
 
       toaster.create({ 
         title: "オンセット検出完了", 

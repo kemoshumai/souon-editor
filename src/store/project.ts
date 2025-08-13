@@ -25,6 +25,12 @@ export default class Project {
     other: string,
     vocals: string
   };
+  stemNotes: {
+    bass: { pitch: number; velocity: number; time: number }[],
+    drums: { pitch: number; velocity: number; time: number }[],
+    other: { pitch: number; velocity: number; time: number }[],
+    vocals: { pitch: number; velocity: number; time: number }[],
+  };
 
   constructor(music: string, name: string, charts: Chart[], musicTempoList: TempoEvent[]) {
     this.music = music;
@@ -41,6 +47,13 @@ export default class Project {
       drums: "",
       other: "",
       vocals: ""
+    };
+
+    this.stemNotes = {
+      bass: [],
+      drums: [],
+      other: [],
+      vocals: []
     };
   }
 
@@ -153,7 +166,8 @@ export default class Project {
       playingPosition: this.playingPosition.getSerialized(),
       charts: this.charts,
       musicTempoList: this.musicTempoList,
-      stems: this.stems
+      stems: this.stems,
+      stemNotes: this.stemNotes
     });
   }
 
@@ -223,6 +237,13 @@ export default class Project {
       drums: json.stems.drums,
       other: json.stems.other,
       vocals: json.stems.vocals
+    };
+
+    this.stemNotes = {
+      bass: json.stemNotes.bass,
+      drums: json.stemNotes.drums,
+      other: json.stemNotes.other,
+      vocals: json.stemNotes.vocals
     };
 
     store.saved = true;

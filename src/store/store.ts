@@ -19,28 +19,6 @@ interface Store {
     vocals: boolean;
   };
   moca: boolean;
-  stemNotes: {
-    bass: {
-      pitch: number;
-      velocity: number;
-      time: number;
-    }[];
-    drums: {
-      pitch: number;
-      velocity: number;
-      time: number;
-    }[];
-    other: {
-      pitch: number;
-      velocity: number;
-      time: number;
-    }[];
-    vocals: {
-      pitch: number;
-      velocity: number;
-      time: number;
-    }[];
-  };
 }
 
 const store = proxy<Store>({
@@ -59,13 +37,7 @@ const store = proxy<Store>({
     other: false,
     vocals: false
   },
-  moca: false,
-  stemNotes: {
-    bass: [],
-    drums: [],
-    other: [],
-    vocals: []
-  }
+  moca: false
 });
 
 (async () => {

@@ -50,7 +50,8 @@ export default function StemTrack() {
   const header = (
     <Stack>
       <Center><Text>Stems</Text></Center>
-      <HStack mt={10}>
+      <Center><Text mt={2}>{ snap.project.stemNotes.bass.length > 0 ? "解析済み" : "未解析" } </Text></Center>
+      <HStack mt={1}>
         <Text w={25} textAlign={"center"}>B</Text>
         <Text w={25} textAlign={"center"}>D</Text>
         <Text w={25} textAlign={"center"}>O</Text>
