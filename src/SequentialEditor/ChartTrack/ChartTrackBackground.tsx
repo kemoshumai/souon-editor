@@ -1,4 +1,4 @@
-import { useEffect, useRef, memo } from "react";
+import { useEffect, useRef, memo, useMemo } from "react";
 import Chart from "../../store/chart";
 import { useSnapshot } from "valtio";
 import store from "../../store/store";
@@ -14,6 +14,12 @@ function ChartTrackBackground(props: { chart: Chart, pattern: number[] }) {
   // 描画に必要な値のみを依存関係に含める
   const { zoomScale, musicTempoList } = snap.project;
   const laneNumber = chart?.laneNumber || 0;
+
+  // ズームスケールの変化を制限して描画頻度を下げる
+  const throttledZoomScale = useMemo(() => {
+    // ズームスケールを段階的に制限（0.1刻み）
+    return Math.round(zoomScale * 10) / 10;
+  }, [zoomScale]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -73,7 +79,7 @@ function ChartTrackBackground(props: { chart: Chart, pattern: number[] }) {
       for (let i = 0; i < barNumber; i++) {
 
         const y = canvas.height - (bottom + i * barHeight);
-        const resolution = tempoEvent.beat * (zoomScale < 3 ? 1 : 4);
+        const resolution = tempoEvent.beat * (throttledZoomScale < 3 ? 1 : 4);
         const unitHeight = barHeight / resolution;
 
         for(let j = 0; j < resolution; j++) {
@@ -87,7 +93,7 @@ function ChartTrackBackground(props: { chart: Chart, pattern: number[] }) {
         }
 
         // 小節番号を描画 - ズームレベルが低い場合のみ描画
-        if (zoomScale > 1) {
+        if (throttledZoomScale > 1) {
           ctx.fillStyle = "#fff";
           ctx.font = "12px sans-serif";
           ctx.textAlign = "center";
@@ -96,7 +102,7 @@ function ChartTrackBackground(props: { chart: Chart, pattern: number[] }) {
       }
     }
 
-  }, [canvasRef.current, musicTempoList, zoomScale, laneNumber, canvasRef.current?.clientWidth, pattern, snap.project.music]);
+  }, [canvasRef.current, musicTempoList, throttledZoomScale, laneNumber, canvasRef.current?.clientWidth, pattern, snap.project.music]);
 
   return (<canvas ref={canvasRef} style={{
     position: "relative",
