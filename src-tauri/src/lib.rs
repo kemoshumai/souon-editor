@@ -5,6 +5,7 @@ use tauri_plugin_dialog::DialogExt;
 mod python_env;
 mod stem;
 mod audio_labeling;
+mod language_model;
 
 #[tauri::command]
 async fn set_title(window: tauri::Window, title: &str) -> Result<(), tauri::Error> {
@@ -63,7 +64,8 @@ pub fn run() {
             python_env::check_python,
             python_env::check_demucs,
             stem::demucs,
-            audio_labeling::onset
+            audio_labeling::onset,
+            language_model::call_llm
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
