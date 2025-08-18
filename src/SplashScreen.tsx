@@ -1,12 +1,13 @@
 import { useSnapshot } from "valtio";
 import store from "./store/store";
-import { Box, AbsoluteCenter, Text, VStack, Bleed } from "@chakra-ui/react";
+import { Box, AbsoluteCenter, Text, VStack, Bleed, Spinner, Show } from "@chakra-ui/react";
 import { useState, useEffect } from "react";
 
 export default function SplashScreen() {
   const snap = useSnapshot(store);
   const [shouldShow, setShouldShow] = useState(true);
   const [isVisible, setIsVisible] = useState(true);
+  const [loadingSpinner, setLoadingSpinner] = useState(false);
 
   const loading = !(snap.isUserSettingsLoaded && snap.isPythonEnvReady);
 
@@ -22,6 +23,15 @@ export default function SplashScreen() {
       return () => clearTimeout(timer);
     }
   }, [loading, shouldShow]);
+
+  // 5秒まではスピナーを非表示。5秒後に表示。
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setLoadingSpinner(true);
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   console.log("loading:", loading);
   console.log("isUserSettingsLoaded:", snap.isUserSettingsLoaded);
@@ -87,6 +97,12 @@ export default function SplashScreen() {
                   <Text key={index}>{message}</Text>
                 ))
               }
+              <Show when={loadingSpinner} >
+                <Box display="flex" alignItems="center" gap={4}>
+                  <Spinner size="lg" />
+                  <Text fontWeight={"bold"}>時間がかかりそうです。コーヒーでも飲んで待っててください...</Text>
+                </Box>
+              </Show>
             </VStack>
         </Bleed>
       </AbsoluteCenter>

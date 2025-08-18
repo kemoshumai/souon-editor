@@ -1,11 +1,8 @@
-use std::{io::Write, path::PathBuf};
+use std::path::PathBuf;
 use tauri::Manager;
 
-#[cfg(target_os = "windows")]
-use std::os::windows::process::CommandExt;
-
 // Python環境をダウンロードして展開する関数
-pub fn download_and_extract_python(local_python_dir: &std::path::Path) -> Result<(), String> {
+pub async fn download_and_extract_python(local_python_dir: &std::path::Path) -> Result<(), String> {
     log::info!("Downloading Python environment from URL...");
     
     const PYTHON_URL: &str = "https://www.python.org/ftp/python/3.13.6/python-3.13.6-embed-amd64.zip";
@@ -17,66 +14,70 @@ pub fn download_and_extract_python(local_python_dir: &std::path::Path) -> Result
     
     // AppLocalDataディレクトリが存在しない場合は作成
     if let Some(parent) = local_python_dir.parent() {
-        std::fs::create_dir_all(parent)
+        tokio::fs::create_dir_all(parent).await
             .map_err(|e| format!("Failed to create AppLocalData directory: {}", e))?;
     }
     
     // Pythonのzipファイルをダウンロード
     log::info!("Downloading Python from: {}", PYTHON_URL);
-    let response = reqwest::blocking::get(PYTHON_URL)
+    let response = reqwest::get(PYTHON_URL).await
         .map_err(|e| format!("Failed to download Python: {}", e))?;
     
     if !response.status().is_success() {
         return Err(format!("Failed to download Python: HTTP {}", response.status()));
     }
     
-    let content = response.bytes()
+    let content = response.bytes().await
         .map_err(|e| format!("Failed to read download content: {}", e))?;
     
     // 一時ファイルに保存
     log::info!("Saving downloaded file to: {}", temp_zip_path.display());
-    let mut temp_file = std::fs::File::create(&temp_zip_path)
-        .map_err(|e| format!("Failed to create temporary file: {}", e))?;
-    temp_file.write_all(&content)
+    tokio::fs::write(&temp_zip_path, &content).await
         .map_err(|e| format!("Failed to write to temporary file: {}", e))?;
     
     // zipファイルを展開
     log::info!("Extracting Python to: {}", local_python_dir.display());
-    let file = std::fs::File::open(&temp_zip_path)
-        .map_err(|e| format!("Failed to open zip file: {}", e))?;
-    let mut archive = zip::ZipArchive::new(file)
-        .map_err(|e| format!("Failed to read zip archive: {}", e))?;
+    let temp_zip_path_clone = temp_zip_path.clone();
+    let local_python_dir_clone = local_python_dir.to_path_buf();
     
-    std::fs::create_dir_all(local_python_dir)
-        .map_err(|e| format!("Failed to create Python directory: {}", e))?;
-    
-    for i in 0..archive.len() {
-        let mut file = archive.by_index(i)
-            .map_err(|e| format!("Failed to read file from archive: {}", e))?;
-        let outpath = match file.enclosed_name() {
-            Some(path) => local_python_dir.join(path),
-            None => continue,
-        };
+    tokio::task::spawn_blocking(move || {
+        let file = std::fs::File::open(&temp_zip_path_clone)
+            .map_err(|e| format!("Failed to open zip file: {}", e))?;
+        let mut archive = zip::ZipArchive::new(file)
+            .map_err(|e| format!("Failed to read zip archive: {}", e))?;
         
-        if file.name().ends_with('/') {
-            std::fs::create_dir_all(&outpath)
-                .map_err(|e| format!("Failed to create directory: {}", e))?;
-        } else {
-            if let Some(p) = outpath.parent() {
-                if !p.exists() {
-                    std::fs::create_dir_all(p)
-                        .map_err(|e| format!("Failed to create parent directory: {}", e))?;
+        std::fs::create_dir_all(&local_python_dir_clone)
+            .map_err(|e| format!("Failed to create Python directory: {}", e))?;
+        
+        for i in 0..archive.len() {
+            let mut file = archive.by_index(i)
+                .map_err(|e| format!("Failed to read file from archive: {}", e))?;
+            let outpath = match file.enclosed_name() {
+                Some(path) => local_python_dir_clone.join(path),
+                None => continue,
+            };
+            
+            if file.name().ends_with('/') {
+                std::fs::create_dir_all(&outpath)
+                    .map_err(|e| format!("Failed to create directory: {}", e))?;
+            } else {
+                if let Some(p) = outpath.parent() {
+                    if !p.exists() {
+                        std::fs::create_dir_all(p)
+                            .map_err(|e| format!("Failed to create parent directory: {}", e))?;
+                    }
                 }
+                let mut outfile = std::fs::File::create(&outpath)
+                    .map_err(|e| format!("Failed to create output file: {}", e))?;
+                std::io::copy(&mut file, &mut outfile)
+                    .map_err(|e| format!("Failed to extract file: {}", e))?;
             }
-            let mut outfile = std::fs::File::create(&outpath)
-                .map_err(|e| format!("Failed to create output file: {}", e))?;
-            std::io::copy(&mut file, &mut outfile)
-                .map_err(|e| format!("Failed to extract file: {}", e))?;
         }
-    }
+        Ok::<(), String>(())
+    }).await.map_err(|e| format!("Task join error: {}", e))??;
     
     // 一時ファイルを削除
-    let _ = std::fs::remove_file(&temp_zip_path);
+    let _ = tokio::fs::remove_file(&temp_zip_path).await;
     
     log::info!("Python environment downloaded and extracted successfully");
     Ok(())
@@ -84,7 +85,7 @@ pub fn download_and_extract_python(local_python_dir: &std::path::Path) -> Result
 
 
 #[tauri::command]
-pub fn check_python(app_handle: tauri::AppHandle) -> Result<String, String> {
+pub async fn check_python(app_handle: tauri::AppHandle) -> Result<String, String> {
     log::info!("Checking Python environment...");
 
     // AppLocalDataのPython環境パスを取得
@@ -108,7 +109,7 @@ pub fn check_python(app_handle: tauri::AppHandle) -> Result<String, String> {
             .expect("Failed to resolve local Python directory path");
 
         // Python環境をダウンロードして展開
-        download_and_extract_python(&local_python_dir)
+        download_and_extract_python(&local_python_dir).await
             .map_err(|e| format!("Failed to download and extract Python environment: {}", e))?;
 
         log::info!(
@@ -150,17 +151,17 @@ pub fn check_python(app_handle: tauri::AppHandle) -> Result<String, String> {
             log::info!("get-pip.py not found, downloading...");
             const GET_PIP_URL: &str = "https://bootstrap.pypa.io/get-pip.py";
             
-            let response = reqwest::blocking::get(GET_PIP_URL)
+            let response = reqwest::get(GET_PIP_URL).await
                 .map_err(|e| format!("Failed to download get-pip.py: {}", e))?;
             
             if !response.status().is_success() {
                 return Err(format!("Failed to download get-pip.py: HTTP {}", response.status()));
             }
             
-            let content = response.text()
+            let content = response.text().await
                 .map_err(|e| format!("Failed to read get-pip.py content: {}", e))?;
             
-            std::fs::write(&python_script, content)
+            tokio::fs::write(&python_script, content).await
                 .map_err(|e| format!("Failed to save get-pip.py: {}", e))?;
             
             log::info!("get-pip.py downloaded successfully");
@@ -182,7 +183,7 @@ pub fn check_python(app_handle: tauri::AppHandle) -> Result<String, String> {
             let correct_pth_content = "python313.zip\n.\nimport site";
             
             log::info!("Setting python313._pth to standard format");
-            std::fs::write(&pth_file_path, correct_pth_content)
+            tokio::fs::write(&pth_file_path, correct_pth_content).await
                 .map_err(|e| format!("Failed to update python313._pth: {}", e))?;
             log::info!("Successfully updated python313._pth with standard content");
         } else {
@@ -208,7 +209,7 @@ pub fn check_python(app_handle: tauri::AppHandle) -> Result<String, String> {
         }
 
         // Pythonを実行してpipをインストール
-        let mut command = std::process::Command::new(&local_python_path);
+        let mut command = tokio::process::Command::new(&local_python_path);
         let command = command.arg(&python_script);
 
         #[cfg(target_os = "windows")]
@@ -217,7 +218,7 @@ pub fn check_python(app_handle: tauri::AppHandle) -> Result<String, String> {
             command.creation_flags(CREATE_NO_WINDOW);
         }
 
-        let output = command.output().map_err(|e| {
+        let output = command.output().await.map_err(|e| {
             format!(
                 "Failed to execute Python script: {} (command: {} {})",
                 e,
@@ -256,7 +257,7 @@ pub fn check_python(app_handle: tauri::AppHandle) -> Result<String, String> {
 }
 
 #[tauri::command]
-pub fn check_demucs(app_handle: tauri::AppHandle) -> Result<String, String> {
+pub async fn check_demucs(app_handle: tauri::AppHandle) -> Result<String, String> {
     log::info!("Checking Demucs environment...");
 
     // demucsのパスを取得（AppLocalDataのpython_env/Scripts/demucs.exe）
@@ -295,7 +296,7 @@ pub fn check_demucs(app_handle: tauri::AppHandle) -> Result<String, String> {
 
         // pipの直接パスを取得
         // pipを実行し依存関係をインストール（python.exe -m pip install --upgrade setuptools wheel）
-        let mut command = std::process::Command::new(&local_python_path);
+        let mut command = tokio::process::Command::new(&local_python_path);
         command
             .arg("-m")
             .arg("pip")
@@ -314,7 +315,7 @@ pub fn check_demucs(app_handle: tauri::AppHandle) -> Result<String, String> {
         }
 
         let output = command
-            .output()
+            .output().await
             .map_err(|e| format!("Failed to execute pip for dependencies: {} (command: {} -m pip install --upgrade setuptools wheel soundfile)", 
                 e, local_python_path.to_string_lossy()))?;
 
@@ -335,7 +336,7 @@ pub fn check_demucs(app_handle: tauri::AppHandle) -> Result<String, String> {
         }
 
         // demucsをインストール
-        let mut command = std::process::Command::new(&local_python_path);
+        let mut command = tokio::process::Command::new(&local_python_path);
 
         command
             .arg("-m")
@@ -354,7 +355,7 @@ pub fn check_demucs(app_handle: tauri::AppHandle) -> Result<String, String> {
             command.creation_flags(CREATE_NO_WINDOW);
         }
 
-        let output = command.output().map_err(|e| {
+        let output = command.output().await.map_err(|e| {
             format!(
                 "Failed to execute pip for demucs: {} (command: {} -m pip install --upgrade demucs)",
                 e,
