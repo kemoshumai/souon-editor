@@ -1,14 +1,11 @@
 use base64::{engine::general_purpose, Engine as _};
 use tauri::Manager;
 
-#[cfg(target_os = "windows")]
-use std::os::windows::process::CommandExt;
-
 #[tauri::command]
-pub fn demucs(
+pub async fn demucs(
     app_handle: tauri::AppHandle,
-    input_base64: &str,
-    mime_type: &str,
+    input_base64: String,
+    mime_type: String,
 ) -> Result<String, String> {
     log::info!(
         "Running Demucs with input base64 and MIME type: {}",
@@ -17,13 +14,13 @@ pub fn demucs(
     log::info!("Input data base64 length: {}", input_base64.len());
     // 入力のbase64をデコード
     let input_data = general_purpose::STANDARD
-        .decode(input_base64)
+        .decode(&input_base64)
         .map_err(|e| format!("Failed to decode base64: {}", e))?;
 
     log::info!("Decoded input data length: {}", input_data.len());
 
     // 拡張子を取得
-    let extension = match mime_type {
+    let extension = match mime_type.as_str() {
         "audio/mpeg" | "audio/mp3" => "mp3",
         "audio/wav" | "audio/wave" => "wav",
         "audio/flac" => "flac",
@@ -44,7 +41,8 @@ pub fn demucs(
         .expect("Failed to resolve temporary file path");
 
     // 一時ファイルにデータを書き込む
-    std::fs::write(&temp_file, input_data)
+    tokio::fs::write(&temp_file, input_data)
+        .await
         .map_err(|e| format!("Failed to write temporary file: {}", e))?;
 
     // demucs.exeのパスを取得（AppLocalData）
@@ -63,23 +61,32 @@ pub fn demucs(
         .expect("Failed to resolve demucs_output directory");
 
     // AppLocalDataにoutputディレクトリが存在しない場合は作成
-    if !output_dir.exists() {
-        std::fs::create_dir_all(&output_dir)
+    if !tokio::fs::try_exists(&output_dir)
+        .await
+        .map_err(|e| format!("Failed to check if output directory exists: {}", e))?
+    {
+        tokio::fs::create_dir_all(&output_dir)
+            .await
             .map_err(|e| format!("Failed to create demucs_output directory: {}", e))?;
     }
 
     // 出力先のフォルダ内にフォルダが存在する場合は削除
-    for entry in std::fs::read_dir(&output_dir)
-        .map_err(|e| format!("Failed to read demucs_output directory: {}", e))?
+    let mut entries = tokio::fs::read_dir(&output_dir)
+        .await
+        .map_err(|e| format!("Failed to read demucs_output directory: {}", e))?;
+        
+    while let Some(entry) = entries
+        .next_entry()
+        .await
+        .map_err(|e| format!("Failed to read entry in demucs_output directory: {}", e))?
     {
-        let entry =
-            entry.map_err(|e| format!("Failed to read entry in demucs_output directory: {}", e))?;
-        if entry
-            .file_type()
-            .map_err(|e| format!("Failed to get file type: {}", e))?
-            .is_dir()
-        {
-            std::fs::remove_dir_all(entry.path())
+        let metadata = entry
+            .metadata()
+            .await
+            .map_err(|e| format!("Failed to get metadata: {}", e))?;
+        if metadata.is_dir() {
+            tokio::fs::remove_dir_all(entry.path())
+                .await
                 .map_err(|e| format!("Failed to remove directory: {}", e))?;
         }
     }
@@ -87,7 +94,7 @@ pub fn demucs(
     log::info!("Running Demucs...");
 
     // demucsを実行
-    let mut command = std::process::Command::new(&demucs_path);
+    let mut command = tokio::process::Command::new(&demucs_path);
     command
         .arg(&temp_file)
         .arg("-o")
@@ -103,6 +110,7 @@ pub fn demucs(
 
     let output = command
         .output()
+        .await
         .map_err(|e| format!("Failed to execute demucs: {}", e))?;
 
     log::info!("Done.");
@@ -116,7 +124,7 @@ pub fn demucs(
 
     // 出力先のフォルダ内に存在するwavファイルを再帰的に検索
     let mut output_files = Vec::new();
-    search_wav_files(&output_dir, &mut output_files)?;
+    search_wav_files(&output_dir, &mut output_files).await?;
 
     if output_files.is_empty() {
         return Err("No output files found".to_string());
@@ -139,7 +147,12 @@ pub fn demucs(
     let mut vorbis_files = Vec::new();
     for wav_file in output_files {
         let wav_path = std::path::Path::new(&wav_file);
-        let output_base64 = convert_to_vorbis(wav_path);
+        let output_base64 = tokio::task::spawn_blocking({
+            let wav_path = wav_path.to_owned();
+            move || convert_to_vorbis(&wav_path)
+        })
+        .await
+        .map_err(|e| format!("Failed to convert to vorbis: {}", e))?;
         vorbis_files.push(output_base64);
     }
 
@@ -220,18 +233,35 @@ pub fn convert_to_vorbis(wav_path: &std::path::Path) -> String {
     general_purpose::STANDARD.encode(&output_data)
 }
 
-pub fn search_wav_files(dir: &std::path::Path, output_files: &mut Vec<String>) -> Result<(), String> {
-    for entry in std::fs::read_dir(dir)
-        .map_err(|e| format!("Failed to read directory {}: {}", dir.display(), e))?
-    {
-        let entry = entry
-            .map_err(|e| format!("Failed to read entry in directory {}: {}", dir.display(), e))?;
-        let path = entry.path();
-        if path.is_dir() {
-            search_wav_files(&path, output_files)?;
-        } else if path.extension().and_then(|s| s.to_str()) == Some("wav") {
-            output_files.push(path.to_string_lossy().to_string());
+pub async fn search_wav_files(dir: &std::path::Path, output_files: &mut Vec<String>) -> Result<(), String> {
+    search_wav_files_impl(dir, output_files).await
+}
+
+fn search_wav_files_impl<'a>(
+    dir: &'a std::path::Path,
+    output_files: &'a mut Vec<String>,
+) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), String>> + Send + 'a>> {
+    Box::pin(async move {
+        let mut entries = tokio::fs::read_dir(dir)
+            .await
+            .map_err(|e| format!("Failed to read directory {}: {}", dir.display(), e))?;
+            
+        while let Some(entry) = entries
+            .next_entry()
+            .await
+            .map_err(|e| format!("Failed to read entry in directory {}: {}", dir.display(), e))?
+        {
+            let path = entry.path();
+            let metadata = entry
+                .metadata()
+                .await
+                .map_err(|e| format!("Failed to get metadata: {}", e))?;
+            if metadata.is_dir() {
+                search_wav_files_impl(&path, output_files).await?;
+            } else if path.extension().and_then(|s| s.to_str()) == Some("wav") {
+                output_files.push(path.to_string_lossy().to_string());
+            }
         }
-    }
-    Ok(())
+        Ok(())
+    })
 }

@@ -14,11 +14,19 @@ const HOP_SIZE: usize = 256;
 const I16_TO_SMPL: Smpl = 1.0 / (1 << 16) as Smpl;
 
 #[tauri::command]
-pub fn onset(
+pub async fn onset(
     _app_handle: tauri::AppHandle,
-    input_base64_ogg_vorbis: &str
+    input_base64_ogg_vorbis: String
 ) -> Result<Vec<[f64; 3]>, String> {
+    // 重い処理を別スレッドで実行
+    tokio::task::spawn_blocking(move || {
+        onset_blocking(input_base64_ogg_vorbis)
+    })
+    .await
+    .map_err(|e| format!("Task join error: {}", e))?
+}
 
+fn onset_blocking(input_base64_ogg_vorbis: String) -> Result<Vec<[f64; 3]>, String> {
     log::info!("Running onset detection with input base64 OGG Vorbis data");
 
     log::info!("Starting base64 decode...");
@@ -28,7 +36,7 @@ pub fn onset(
         stripped
     } else {
         log::info!("No data URL prefix found, using input as-is");
-        input_base64_ogg_vorbis
+        &input_base64_ogg_vorbis
     };
     
     let input_data = match general_purpose::STANDARD.decode(base64_data) {
