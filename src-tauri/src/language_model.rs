@@ -80,3 +80,26 @@ pub async fn call_llm(model_name: &str, query: &str) -> Result<String, String> {
         }
     }
 }
+
+#[tauri::command]
+pub async fn is_ollama_installed() -> Result<bool, String> {
+    let mut command = std::process::Command::new("ollama");
+    command.arg("--version");
+
+    #[cfg(target_os = "windows")]
+    {
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
+
+    match command.output() {
+        Ok(output) => {
+            Ok(output.status.success())
+        },
+        Err(_) => {
+            // コマンドが見つからない場合はfalseを返す
+            Ok(false)
+        }
+    }
+}
+
