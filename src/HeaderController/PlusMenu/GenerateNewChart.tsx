@@ -4,12 +4,15 @@ import { Checkbox } from "../../components/ui/checkbox";
 import { useState, forwardRef, useImperativeHandle, useEffect } from "react";
 import { toaster } from "../../components/ui/toaster";
 import { invoke } from "@tauri-apps/api/core";
+import { useSnapshot } from "valtio";
+import store from "../../store/store";
 
 export interface GenerateNewChartDialogRef {
   generateNewChart: () => void;
 }
 
 const GenerateNewChartDialog = forwardRef<GenerateNewChartDialogRef>((_props, ref) => {
+  const snap = useSnapshot(store);
   const [showNewChartConfirmDialog, setShowNewChartConfirmDialog] = useState(false);
   const [isNewChartGenerating, setIsNewChartGenerating] = useState(false);
   const [vramGb, setVramGb] = useState<number | null>(null);
@@ -132,6 +135,222 @@ const GenerateNewChartDialog = forwardRef<GenerateNewChartDialogRef>((_props, re
   };
 
   const vramStatus = getVramStatus();
+
+  // 譜面生成を実行する関数
+  const generate = async (
+    keyCount: number,
+    enabledKeys: boolean[],
+    allowSimultaneousWhiteBlack: boolean,
+    keyTypes: ('white' | 'black')[],
+    customInstructions: string,
+    stemNotes: {
+      readonly bass: readonly { readonly pitch: number; readonly velocity: number; readonly time: number }[],
+      readonly drums: readonly { readonly pitch: number; readonly velocity: number; readonly time: number }[],
+      readonly other: readonly { readonly pitch: number; readonly velocity: number; readonly time: number }[],
+      readonly vocals: readonly { readonly pitch: number; readonly velocity: number; readonly time: number }[],
+    }
+  ) => {
+    console.log("譜面生成開始:", {
+      keyCount,
+      enabledKeys,
+      allowSimultaneousWhiteBlack,
+      keyTypes,
+      customInstructions,
+      stemNotes
+    });
+
+    try {
+      
+      // stemNotesを[(base|drums|other|vocals), pitch, velocity, time]の形式に変換
+      const formattedStemNotes = [
+        ...stemNotes.bass.map(note => ['bass', note.pitch, note.velocity, note.time]),
+        ...stemNotes.drums.map(note => ['drums', note.pitch, note.velocity, note.time]),
+        ...stemNotes.other.map(note => ['other', note.pitch, note.velocity, note.time]),
+        ...stemNotes.vocals.map(note => ['vocals', note.pitch, note.velocity, note.time]),
+      ];
+
+      // プロジェクトのテンポ情報を取得
+      const tempoEvents = snap.project.musicTempoList;
+      
+      // 各小節の時間範囲を計算
+      interface BarInfo {
+        barIndex: number;
+        startTime: number; // 秒
+        endTime: number;   // 秒
+        tempo: number;
+        beat: number;
+        barDuration: number; // 1小節の長さ（秒）
+      }
+      
+      const bars: BarInfo[] = [];
+      let currentTime = 0;
+      let barIndex = 0;
+      
+      for (const tempoEvent of tempoEvents) {
+        const barDuration = (60 / tempoEvent.tempo) * tempoEvent.beat; // 1小節の秒数
+        
+        for (let i = 0; i < tempoEvent.length; i++) {
+          bars.push({
+            barIndex: barIndex,
+            startTime: currentTime,
+            endTime: currentTime + barDuration,
+            tempo: tempoEvent.tempo,
+            beat: tempoEvent.beat,
+            barDuration: barDuration
+          });
+          currentTime += barDuration;
+          barIndex++;
+        }
+      }
+      
+      // クオンタイズ関数（16分音符を最小単位とする）
+      const quantizeBeatPosition = (beatPosition: number): number => {
+        // 16分音符を最小単位とする（1拍を4分割）
+        const quantizeUnit = 0.25; // 16分音符
+        return Math.round(beatPosition / quantizeUnit) * quantizeUnit;
+      };
+      
+      // formattedStemNotesを小節ごとに分割し、timeを小節内の拍位置に変換
+      interface ProcessedNote {
+        instrument: string;
+        pitch: number;
+        velocity: number;
+        barIndex: number;
+        beatPosition: number; // 小節内の拍位置（クオンタイズ済み）
+        originalTime: number; // 元の時間（秒）
+      }
+      
+      const processedNotes: ProcessedNote[] = [];
+      
+      for (const note of formattedStemNotes) {
+        const [instrument, pitch, velocity, originalTime] = note as [string, number, number, number];
+        
+        // velocity が 0 のノートは除外
+        if (velocity === 0) {
+          continue;
+        }
+        
+        // このノートがどの小節に属するかを検索
+        const bar = bars.find(b => originalTime >= b.startTime && originalTime < b.endTime);
+        
+        if (bar) {
+          // 小節内での経過時間を計算
+          const timeInBar = originalTime - bar.startTime;
+          
+          // 小節内の拍位置を計算（1拍 = 60/tempo秒）
+          const beatDuration = 60 / bar.tempo; // 1拍の秒数
+          const rawBeatPosition = timeInBar / beatDuration;
+          
+          // クオンタイズを適用
+          const quantizedBeatPosition = quantizeBeatPosition(rawBeatPosition);
+          
+          // 小節の範囲内に収める（1拍目～beat拍目）
+          if (quantizedBeatPosition >= 1 && quantizedBeatPosition <= bar.beat) {
+            processedNotes.push({
+              instrument,
+              pitch,
+              velocity,
+              barIndex: bar.barIndex,
+              beatPosition: quantizedBeatPosition,
+              originalTime
+            });
+          }
+        }
+      }
+      
+      // 新しいデータ構造に変換
+      interface QuantizedNote {
+        beat: number;
+        pitch: number;
+        velocity: number;
+      }
+      
+      interface BarData {
+        barIndex: number;
+        notes: {
+          drums: QuantizedNote[];
+          bass: QuantizedNote[];
+          vocals: QuantizedNote[];
+          other: QuantizedNote[];
+        };
+      }
+      
+      const quantizedBarData: BarData[] = [];
+      
+      // 小節ごとにグループ化
+      const notesByBar = new Map<number, ProcessedNote[]>();
+      for (const note of processedNotes) {
+        if (!notesByBar.has(note.barIndex)) {
+          notesByBar.set(note.barIndex, []);
+        }
+        notesByBar.get(note.barIndex)!.push(note);
+      }
+      
+      // 各小節のデータを新しい構造に変換
+      for (const [barIndex, notes] of notesByBar.entries()) {
+        const barData: BarData = {
+          barIndex,
+          notes: {
+            drums: [],
+            bass: [],
+            vocals: [],
+            other: []
+          }
+        };
+        
+        // 楽器別にノートを分類
+        for (const note of notes) {
+          const quantizedNote: QuantizedNote = {
+            beat: note.beatPosition,
+            pitch: note.pitch,
+            velocity: note.velocity
+          };
+          
+          switch (note.instrument) {
+            case 'drums':
+              barData.notes.drums.push(quantizedNote);
+              break;
+            case 'bass':
+              barData.notes.bass.push(quantizedNote);
+              break;
+            case 'vocals':
+              barData.notes.vocals.push(quantizedNote);
+              break;
+            case 'other':
+              barData.notes.other.push(quantizedNote);
+              break;
+          }
+        }
+        
+        // 各楽器のノートを拍位置でソート
+        barData.notes.drums.sort((a, b) => a.beat - b.beat);
+        barData.notes.bass.sort((a, b) => a.beat - b.beat);
+        barData.notes.vocals.sort((a, b) => a.beat - b.beat);
+        barData.notes.other.sort((a, b) => a.beat - b.beat);
+        
+        quantizedBarData.push(barData);
+      }
+      
+      // 小節番号でソート
+      quantizedBarData.sort((a, b) => a.barIndex - b.barIndex);
+      
+      // デバッグ用ログ
+      console.log("テンポ情報:", tempoEvents);
+      console.log("小節情報:", bars);
+      console.log("処理済みノート数（velocity > 0）:", processedNotes.length);
+      console.log("クオンタイズ済み小節データ:", quantizedBarData);
+      
+      
+
+      toaster.create({
+        title: "譜面生成完了",
+        description: "新しい譜面が生成されました。",
+        type: "success"
+      });
+    } catch (error) {
+      throw error;
+    }
+  };
   
 
   const GenerateNewChart = async () => {
@@ -143,7 +362,18 @@ const GenerateNewChartDialog = forwardRef<GenerateNewChartDialogRef>((_props, re
     setIsNewChartGenerating(true);
 
     try {
-      // 新しい譜面を生成する処理をここに追加
+      // snapからstemNotesを取得
+      const stemNotes = snap.project.stemNotes;
+      
+      // generate関数を呼び出し
+      await generate(
+        keyCount,
+        enabledKeys,
+        allowSimultaneousWhiteBlack,
+        keyTypes,
+        customInstructions,
+        stemNotes
+      );
     } catch (error) {
       toaster.create({
         title: "譜面生成エラー",
