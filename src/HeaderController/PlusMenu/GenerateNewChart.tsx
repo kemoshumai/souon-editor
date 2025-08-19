@@ -33,6 +33,7 @@ const GenerateNewChartDialog = forwardRef<GenerateNewChartDialogRef>((_props, re
   const [selectedModel, setSelectedModel] = useState("phi4:14b");
   const [customModel, setCustomModel] = useState("");
   const [useCustomModel, setUseCustomModel] = useState(false);
+  const [barsPerBatch, setBarsPerBatch] = useState(1);
   
   // 利用可能なモデルのリスト
   const availableModels = [
@@ -382,7 +383,7 @@ const GenerateNewChartDialog = forwardRef<GenerateNewChartDialogRef>((_props, re
         }))
       );
       
-      // LLMプロンプトを作成する関数
+      // LLMプロンプトを作成する関数（単一小節）
       const createPromptForBar = (
         barData: BarData, 
         barInfo: BarInfo,
@@ -413,13 +414,15 @@ STEM AUDIO DATA:
 ${stemNotesText}
 
 RULES:
-1. Output ONLY a JSON array of notes in this exact format:
-   [{"key": 1, "beat": 1.0}, {"key": 3, "beat": 1.5}, ...]
+1. Output ONLY a valid JSON array of notes in this exact format:
+   [{"key": 1, "beat": 1.0}, {"key": 3, "beat": 1.5}]
 2. Key numbers range from 1 to ${keyCount}
 3. Beat positions must be quantized to 16th notes (0.25 increments): 1.0, 1.25, 1.5, 1.75, 2.0, etc.
 4. Beat positions must be within 1.0 to ${barInfo.beat}.0
 5. Only use enabled keys: ${enabledKeys.map((enabled, i) => enabled ? i + 1 : null).filter(Boolean).join(', ')}
 ${!allowSimultaneousWhiteBlack ? `6. Do not place white and black keys simultaneously at the same beat position` : ''}
+7. Multiple notes can have the same beat position if they use different keys
+8. Ensure all JSON syntax is correct (proper commas, brackets, quotes)
 
 DESIGN PHILOSOPHY:
 - Follow the rhythm and intensity of the stem audio data
@@ -430,19 +433,85 @@ DESIGN PHILOSOPHY:
 ${customInstructions ? `CUSTOM INSTRUCTIONS:
 ${customInstructions}` : ''}
 
-Output the JSON array only, no other text:`;
+IMPORTANT: Output ONLY the JSON array, no markdown formatting, no code blocks, no other text:`;
+      };
+
+      // LLMプロンプトを作成する関数（複数小節バッチ）
+      const createPromptForBarBatch = (
+        barDataList: BarData[],
+        barInfoList: BarInfo[],
+        keyCount: number,
+        enabledKeys: boolean[],
+        allowSimultaneousWhiteBlack: boolean,
+        keyTypes: ('white' | 'black')[],
+        customInstructions: string
+      ): string => {
+        // 有効な鍵盤の情報を作成
+        const enabledKeyInfo = enabledKeys
+          .map((enabled, index) => enabled ? `Key${index + 1}(${keyTypes[index]})` : null)
+          .filter(Boolean)
+          .join(', ');
+        
+        const barsText = barDataList.map((barData, index) => {
+          const barInfo = barInfoList[index];
+          const stemNotesText = JSON.stringify(barData.notes, null, 2);
+          return `Bar ${barData.barIndex + 1} (${barInfo.beat}/4, ${barInfo.tempo} BPM):\n${stemNotesText}`;
+        }).join('\n\n');
+        
+        const barNumbers = barDataList.map(b => b.barIndex + 1).join(', ');
+        
+        return `You are a professional rhythm game chart designer. Create charts for bars ${barNumbers}.
+
+CONFIGURATION:
+- Total keys: ${keyCount}
+- Available keys: ${enabledKeyInfo}
+- White/Black key simultaneous press: ${allowSimultaneousWhiteBlack ? 'Allowed' : 'Not allowed'}
+
+STEM AUDIO DATA:
+${barsText}
+
+RULES:
+1. Output ONLY a valid JSON object with bar numbers as keys, each containing an array of notes.
+2. Format: {"1": [{"key": 1, "beat": 1.0}, {"key": 3, "beat": 1.5}], "2": [{"key": 2, "beat": 1.0}]}
+3. Key numbers range from 1 to ${keyCount}
+4. Beat positions must be quantized to 16th notes (0.25 increments): 1.0, 1.25, 1.5, 1.75, 2.0, etc.
+5. Beat positions must be within 1.0 to the respective bar's beat count
+6. Only use enabled keys: ${enabledKeys.map((enabled, i) => enabled ? i + 1 : null).filter(Boolean).join(', ')}
+${!allowSimultaneousWhiteBlack ? `7. Do not place white and black keys simultaneously at the same beat position` : ''}
+8. Multiple notes can have the same beat position if they use different keys
+9. Ensure all JSON syntax is correct (proper commas, brackets, quotes)
+
+DESIGN PHILOSOPHY:
+- Follow the rhythm and intensity of the stem audio data
+- Place notes where drums, bass, vocals, or other instruments have strong beats
+- Create engaging patterns that match the musical flow
+- Balance difficulty appropriately
+- Consider musical continuity between bars
+
+${customInstructions ? `CUSTOM INSTRUCTIONS:
+${customInstructions}` : ''}
+
+IMPORTANT: Output ONLY the JSON object, no markdown formatting, no code blocks, no other text:`;
       };
       
       // LLMからの出力をパースする関数
       const parseAIResponse = (response: string): { key: number; beat: number }[] => {
         try {
+          // Markdownのコードブロックを除去
+          let cleanedResponse = response;
+          
+          // ```json と ``` を削除
+          cleanedResponse = cleanedResponse.replace(/```json\s*/g, '');
+          cleanedResponse = cleanedResponse.replace(/```\s*/g, '');
+          
           // レスポンスからJSONを抽出
-          const jsonMatch = response.match(/\[[\s\S]*?\]/);
+          const jsonMatch = cleanedResponse.match(/\[[\s\S]*?\]/);
           if (!jsonMatch) {
             console.warn("No JSON array found in AI response:", response);
             return [];
           }
           
+          console.log("Attempting to parse JSON:", jsonMatch[0]);
           const parsed = JSON.parse(jsonMatch[0]);
           if (!Array.isArray(parsed)) {
             console.warn("AI response is not an array:", parsed);
@@ -450,7 +519,7 @@ Output the JSON array only, no other text:`;
           }
           
           // バリデーション
-          return parsed.filter(note => {
+          const validNotes = parsed.filter(note => {
             if (typeof note.key !== 'number' || typeof note.beat !== 'number') {
               console.warn("Invalid note format:", note);
               return false;
@@ -465,9 +534,134 @@ Output the JSON array only, no other text:`;
             }
             return true;
           });
+          
+          console.log(`Parsed ${validNotes.length} valid notes from ${parsed.length} total notes`);
+          return validNotes;
         } catch (error) {
           console.error("Failed to parse AI response:", error);
+          console.error("Original response:", response);
           return [];
+        }
+      };
+      
+      // バッチ応答のパース関数
+      const parseAIBatchResponse = (response: string, barDataList: BarData[]): Map<number, { key: number; beat: number }[]> => {
+        const result = new Map<number, { key: number; beat: number }[]>();
+        
+        try {
+          // Markdownのコードブロックを除去
+          let cleanedResponse = response.trim();
+          
+          // ```json と ``` を削除
+          cleanedResponse = cleanedResponse.replace(/```json\s*/g, '');
+          cleanedResponse = cleanedResponse.replace(/```\s*/g, '');
+          cleanedResponse = cleanedResponse.trim();
+          
+          console.log("Cleaned response for parsing:", cleanedResponse);
+          
+          // レスポンスからJSONを抽出（ネストしたオブジェクト対応）
+          let jsonString = '';
+          
+          // まず、完全なJSONオブジェクトを見つけるために括弧をカウント
+          const startIndex = cleanedResponse.indexOf('{');
+          if (startIndex === -1) {
+            console.error("No JSON object found in AI response:", response);
+            return result;
+          }
+          
+          let braceCount = 0;
+          let endIndex = -1;
+          
+          for (let i = startIndex; i < cleanedResponse.length; i++) {
+            const char = cleanedResponse[i];
+            if (char === '{') {
+              braceCount++;
+            } else if (char === '}') {
+              braceCount--;
+              if (braceCount === 0) {
+                endIndex = i;
+                break;
+              }
+            }
+          }
+          
+          if (endIndex === -1) {
+            console.error("Incomplete JSON object in AI response:", response);
+            return result;
+          }
+          
+          jsonString = cleanedResponse.substring(startIndex, endIndex + 1);
+          console.log("Extracted JSON string:", jsonString);
+          
+          // JSON文字列を段階的にクリーンアップ
+          // 不正な文字を除去
+          jsonString = jsonString.replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+          
+          // 末尾のカンマを除去
+          jsonString = jsonString.replace(/,(\s*[}\]])/g, '$1');
+          
+          console.log("Attempting to parse cleaned JSON:", jsonString);
+          
+          const parsed = JSON.parse(jsonString);
+          if (typeof parsed !== 'object' || parsed === null) {
+            console.warn("AI response is not an object:", parsed);
+            return result;
+          }
+          
+          console.log("Successfully parsed JSON:", parsed);
+          console.log("Available keys in parsed JSON:", Object.keys(parsed));
+          
+          // 各小節のデータを処理
+          for (const barData of barDataList) {
+            const barKey = (barData.barIndex + 1).toString();
+            console.log(`Looking for bar key: "${barKey}" in parsed data`);
+            const barNotes = parsed[barKey];
+            
+            if (!Array.isArray(barNotes)) {
+              console.warn(`No notes found for bar ${barData.barIndex + 1}, found:`, barNotes);
+              console.warn(`Available keys:`, Object.keys(parsed));
+              result.set(barData.barIndex, []);
+              continue;
+            }
+            
+            console.log(`Processing ${barNotes.length} notes for bar ${barData.barIndex + 1}:`, barNotes);
+            
+            // バリデーション
+            const validNotes = barNotes.filter((note, index) => {
+              if (typeof note !== 'object' || note === null) {
+                console.warn(`Note ${index} is not an object:`, note);
+                return false;
+              }
+              if (typeof note.key !== 'number' || typeof note.beat !== 'number') {
+                console.warn(`Invalid note format at index ${index}:`, note);
+                return false;
+              }
+              if (note.key < 1 || note.key > keyCount) {
+                console.warn(`Invalid key number at index ${index}:`, note.key);
+                return false;
+              }
+              if (!enabledKeys[note.key - 1]) {
+                console.warn(`Key not enabled at index ${index}:`, note.key);
+                return false;
+              }
+              return true;
+            });
+            
+            result.set(barData.barIndex, validNotes);
+            console.log(`Parsed ${validNotes.length} valid notes for bar ${barData.barIndex + 1}`);
+          }
+          
+          return result;
+        } catch (error) {
+          console.error("Failed to parse AI batch response:", error);
+          console.error("Original response:", response);
+          
+          // フォールバック：各小節を個別に空配列として設定
+          for (const barData of barDataList) {
+            result.set(barData.barIndex, []);
+          }
+          
+          return result;
         }
       };
       
@@ -481,7 +675,7 @@ Output the JSON array only, no other text:`;
       
       const finalChartNotes: ChartNote[] = [];
       
-      // 各小節をLLMで処理
+      // 小節をバッチで処理
       let processedBars = 0;
       const totalBarsCount = quantizedBarData.length;
       
@@ -490,67 +684,136 @@ Output the JSON array only, no other text:`;
       setCurrentBar(0);
       setProgressMessage("譜面生成を開始しています...");
       
-      for (const barData of quantizedBarData) {
-        try {
-          // 対応する小節情報を取得
+      // バッチサイズで小節を分割して処理
+      for (let i = 0; i < quantizedBarData.length; i += barsPerBatch) {
+        const batchBarData = quantizedBarData.slice(i, i + barsPerBatch);
+        const batchBarInfo = batchBarData.map(barData => {
           const barInfo = bars.find(b => b.barIndex === barData.barIndex);
           if (!barInfo) {
             console.warn(`Bar info not found for bar ${barData.barIndex}`);
-            continue;
           }
-          
+          return barInfo;
+        }).filter(Boolean) as BarInfo[];
+        
+        if (batchBarInfo.length !== batchBarData.length) {
+          console.warn("Some bar info missing, skipping batch");
+          processedBars += batchBarData.length;
+          continue;
+        }
+        
+        try {
           // プログレス更新
-          setCurrentBar(processedBars + 1);
-          setProgressMessage(`小節 ${barData.barIndex + 1} を処理中...`);
+          const batchStart = batchBarData[0].barIndex + 1;
+          const batchEnd = batchBarData[batchBarData.length - 1].barIndex + 1;
+          setCurrentBar(Math.min(processedBars + batchBarData.length, totalBarsCount));
+          setProgressMessage(batchBarData.length === 1 ? 
+            `小節 ${batchStart} を処理中...` : 
+            `小節 ${batchStart}-${batchEnd} を処理中...`);
           
-          // プロンプトを作成
-          const prompt = createPromptForBar(
-            barData,
-            barInfo,
-            keyCount,
-            enabledKeys,
-            allowSimultaneousWhiteBlack,
-            keyTypes,
-            customInstructions
-          );
+          let aiResponse: string;
           
-          console.log(`Processing bar ${barData.barIndex + 1}/${totalBarsCount}...`);
-          
-          // LLMを呼び出し
-          const actualModelName = getActualModelName();
-          console.log(`Using model: ${actualModelName}`);
-          const aiResponse = await invoke<string>("call_llm", {
-            modelName: actualModelName,
-            query: prompt
-          });
-          
-          console.log(`AI response for bar ${barData.barIndex + 1}:`, aiResponse);
-          
-          // AIの出力をパース
-          const barNotes = parseAIResponse(aiResponse);
-          
-          // 時間に変換して最終結果に追加
-          for (const note of barNotes) {
-            // 拍位置を時間に変換
-            const beatDuration = 60 / barInfo.tempo; // 1拍の秒数
-            const timeInBar = (note.beat - 1) * beatDuration; // 小節内の時間（0基点）
-            const absoluteTime = barInfo.startTime + timeInBar; // 絶対時間
+          if (batchBarData.length === 1) {
+            // 単一小節の場合は既存の関数を使用
+            const prompt = createPromptForBar(
+              batchBarData[0],
+              batchBarInfo[0],
+              keyCount,
+              enabledKeys,
+              allowSimultaneousWhiteBlack,
+              keyTypes,
+              customInstructions
+            );
             
-            finalChartNotes.push({
-              key: note.key,
-              time: absoluteTime,
-              barIndex: barData.barIndex,
-              beat: note.beat
+            console.log(`Processing single bar ${batchStart}/${totalBarsCount}...`);
+            
+            // LLMを呼び出し
+            const actualModelName = getActualModelName();
+            console.log(`Using model: ${actualModelName}`);
+            aiResponse = await invoke<string>("call_llm", {
+              modelName: actualModelName,
+              query: prompt
             });
+            
+            console.log(`AI response for bar ${batchStart}:`, aiResponse);
+            
+            // AIの出力をパース
+            const barNotes = parseAIResponse(aiResponse);
+            
+            // 時間に変換して最終結果に追加
+            for (const note of barNotes) {
+              // 拍位置を時間に変換
+              const beatDuration = 60 / batchBarInfo[0].tempo; // 1拍の秒数
+              const timeInBar = (note.beat - 1) * beatDuration; // 小節内の時間（0基点）
+              const absoluteTime = batchBarInfo[0].startTime + timeInBar; // 絶対時間
+              
+              finalChartNotes.push({
+                key: note.key,
+                time: absoluteTime,
+                barIndex: batchBarData[0].barIndex,
+                beat: note.beat
+              });
+            }
+            
+            console.log(`Completed bar ${batchStart}, generated ${barNotes.length} notes`);
+            
+          } else {
+            // 複数小節の場合はバッチ関数を使用
+            const prompt = createPromptForBarBatch(
+              batchBarData,
+              batchBarInfo,
+              keyCount,
+              enabledKeys,
+              allowSimultaneousWhiteBlack,
+              keyTypes,
+              customInstructions
+            );
+            
+            console.log(`Processing batch bars ${batchStart}-${batchEnd}/${totalBarsCount}...`);
+            
+            // LLMを呼び出し
+            const actualModelName = getActualModelName();
+            console.log(`Using model: ${actualModelName}`);
+            aiResponse = await invoke<string>("call_llm", {
+              modelName: actualModelName,
+              query: prompt
+            });
+            
+            console.log(`AI response for bars ${batchStart}-${batchEnd}:`, aiResponse);
+            
+            // AIの出力をパース
+            const batchNotes = parseAIBatchResponse(aiResponse, batchBarData);
+            
+            // 時間に変換して最終結果に追加
+            for (const [barIndex, barNotes] of batchNotes.entries()) {
+              const barInfo = batchBarInfo.find(b => b.barIndex === barIndex);
+              if (!barInfo) continue;
+              
+              for (const note of barNotes) {
+                // 拍位置を時間に変換
+                const beatDuration = 60 / barInfo.tempo; // 1拍の秒数
+                const timeInBar = (note.beat - 1) * beatDuration; // 小節内の時間（0基点）
+                const absoluteTime = barInfo.startTime + timeInBar; // 絶対時間
+                
+                finalChartNotes.push({
+                  key: note.key,
+                  time: absoluteTime,
+                  barIndex: barIndex,
+                  beat: note.beat
+                });
+              }
+            }
+            
+            const totalNotesGenerated = Array.from(batchNotes.values()).reduce((sum, notes) => sum + notes.length, 0);
+            console.log(`Completed batch bars ${batchStart}-${batchEnd}, generated ${totalNotesGenerated} notes`);
           }
           
-          processedBars++;
-          console.log(`Completed bar ${barData.barIndex + 1}, generated ${barNotes.length} notes`);
+          processedBars += batchBarData.length;
           
         } catch (error) {
-          console.error(`Error processing bar ${barData.barIndex + 1}:`, error);
+          const batchStartForError = batchBarData[0].barIndex + 1;
+          console.error(`Error processing batch starting at bar ${batchStartForError}:`, error);
           // エラーがあっても処理を続行
-          processedBars++;
+          processedBars += batchBarData.length;
         }
       }
       
@@ -842,6 +1105,40 @@ Output the JSON array only, no other text:`;
                   使用予定モデル: {customModel.trim()}
                 </Text>
               )}
+            </Box>
+            
+            {/* 小節バッチサイズ設定 */}
+            <Box mb={4}>
+              <Text fontSize="sm" mb={2}>小節処理バッチサイズ</Text>
+              
+              {/* プリセットボタン */}
+              <HStack mb={2} gap={2}>
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((batchSize) => (
+                  <Button
+                    key={batchSize}
+                    size="sm"
+                    variant={barsPerBatch === batchSize ? "solid" : "outline"}
+                    colorScheme={barsPerBatch === batchSize ? "blue" : "gray"}
+                    onClick={() => setBarsPerBatch(batchSize)}
+                    minW="40px"
+                  >
+                    {batchSize}
+                  </Button>
+                ))}
+              </HStack>
+              
+              <Text fontSize="xs" color="gray.500" mb={1}>
+                1小節ずつ: 最も精度が高いが時間がかかる
+              </Text>
+              <Text fontSize="xs" color="gray.500" mb={1}>
+                2-4小節ずつ: バランスの取れた設定（推奨）
+              </Text>
+              <Text fontSize="xs" color="gray.500" mb={1}>
+                5-8小節ずつ: 高速だが精度が下がる可能性
+              </Text>
+              <Text fontSize="xs" color="blue.600" mt={2}>
+                現在の設定: {barsPerBatch}小節ずつ処理
+              </Text>
             </Box>
             
             {/* 鍵盤数設定 */}
