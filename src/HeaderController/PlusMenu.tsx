@@ -10,8 +10,9 @@ import { toaster } from "../components/ui/toaster";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import TempoEvent from "../store/tempoEvent";
 import { invoke } from "@tauri-apps/api/core";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { DialogRoot, DialogContent, DialogHeader, DialogFooter, DialogBody, DialogTitle, DialogDescription, DialogCloseTrigger } from "../components/ui/dialog";
+import GenerateNewChartDialog, { GenerateNewChartDialogRef } from "./PlusMenu/GenerateNewChart";
 
 enum PlusMenuSelection {
   SetMusicFile = "set_music_file",
@@ -19,6 +20,7 @@ enum PlusMenuSelection {
   AddTempo = "add_tempo",
   GenerateStems = "generate_stems",
   GenerateOnsets = "generate_onsets",
+  GenerateNewChart = "generate_new_chart"
 }
 
 export default function PlusMenu() {
@@ -26,6 +28,7 @@ export default function PlusMenu() {
   const [isStemGenerating, setIsStemGenerating] = useState(false);
   const [showOnsetConfirmDialog, setShowOnsetConfirmDialog] = useState(false);
   const [isOnsetGenerating, setIsOnsetGenerating] = useState(false);
+  const generateNewChartDialogRef = useRef<GenerateNewChartDialogRef>(null);
 
   const AddChart = () => {
     const chart = new Chart(crypto.randomUUID(), [], 12, "新しい譜面");
@@ -171,6 +174,9 @@ export default function PlusMenu() {
       case PlusMenuSelection.GenerateOnsets:
         GenerateOnsets();
         break;
+      case PlusMenuSelection.GenerateNewChart:
+        generateNewChartDialogRef.current?.generateNewChart();
+        break;
     }
   }
 
@@ -183,6 +189,7 @@ export default function PlusMenu() {
         <MenuItem value={PlusMenuSelection.AddTempo}><MdSpeed />テンポ情報追加</MenuItem>
         <MenuItem value={PlusMenuSelection.GenerateStems}><MdAutoFixHigh />ステムを生成する</MenuItem>
         <MenuItem value={PlusMenuSelection.GenerateOnsets}><MdMusicNote />オンセットを生成する</MenuItem>
+        <MenuItem value={PlusMenuSelection.GenerateNewChart}><MdMusicNote />譜面を自動生成する</MenuItem>
       </MenuContent>
     </MenuRoot>
 
@@ -261,5 +268,7 @@ export default function PlusMenu() {
         </DialogBody>
       </DialogContent>
     </DialogRoot>
+
+    <GenerateNewChartDialog ref={generateNewChartDialogRef} />
   </>);
 }
