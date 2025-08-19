@@ -65,7 +65,9 @@ pub fn run() {
             python_env::check_demucs,
             stem::demucs,
             audio_labeling::onset,
-            language_model::call_llm
+            language_model::call_llm,
+            language_model::is_ollama_installed,
+            language_model::get_vram
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
