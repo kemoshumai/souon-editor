@@ -6,6 +6,11 @@ import { toaster } from "../../components/ui/toaster";
 import { invoke } from "@tauri-apps/api/core";
 import { useSnapshot } from "valtio";
 import store from "../../store/store";
+import Chart from "../../store/chart";
+import ChartEvent from "../../store/chartEvent";
+import { SingleNoteEvent } from "../../store/noteEvent";
+import Lane from "../../store/lane";
+import TemporalPosition from "../../store/temporalPosition";
 
 export interface GenerateNewChartDialogRef {
   generateNewChart: () => void;
@@ -25,6 +30,29 @@ const GenerateNewChartDialog = forwardRef<GenerateNewChartDialogRef>((_props, re
   const [allowSimultaneousWhiteBlack, setAllowSimultaneousWhiteBlack] = useState(true);
   const [keyTypes, setKeyTypes] = useState<('white' | 'black')[]>([]);
   const [customInstructions, setCustomInstructions] = useState("");
+  const [selectedModel, setSelectedModel] = useState("phi4:14b");
+  const [customModel, setCustomModel] = useState("");
+  const [useCustomModel, setUseCustomModel] = useState(false);
+  
+  // 利用可能なモデルのリスト
+  const availableModels = [
+    { value: "phi4:14b", label: "Phi-4 14B (推奨)", description: "バランスの良い高性能モデル" },
+    { value: "llama3.2:3b", label: "Llama 3.2 3B", description: "軽量で高速" },
+    { value: "llama3.2:1b", label: "Llama 3.2 1B", description: "最軽量" },
+    { value: "qwen2.5:7b", label: "Qwen 2.5 7B", description: "中程度の性能" },
+    { value: "codellama:7b", label: "CodeLlama 7B", description: "コード生成特化" },
+    { value: "mistral:7b", label: "Mistral 7B", description: "汎用モデル" },
+  ];
+
+  // 実際に使用するモデル名を取得する関数
+  const getActualModelName = () => {
+    return useCustomModel && customModel.trim() ? customModel.trim() : selectedModel;
+  };
+  
+  // プログレス関連のstate
+  const [currentBar, setCurrentBar] = useState(0);
+  const [totalBars, setTotalBars] = useState(0);
+  const [progressMessage, setProgressMessage] = useState("");
 
   // ピアノの白鍵・黒鍵配置を生成する関数
   const generatePianoLayout = (count: number): ('white' | 'black')[] => {
@@ -340,6 +368,257 @@ const GenerateNewChartDialog = forwardRef<GenerateNewChartDialogRef>((_props, re
       console.log("処理済みノート数（velocity > 0）:", processedNotes.length);
       console.log("クオンタイズ済み小節データ:", quantizedBarData);
       
+      // サンプル表示（最初の3小節）
+      console.log("サンプル小節データ（最初の3小節）:", 
+        quantizedBarData.slice(0, 3).map(bar => ({
+          barIndex: bar.barIndex,
+          totalNotes: Object.values(bar.notes).reduce((sum, notes) => sum + notes.length, 0),
+          notesByInstrument: {
+            drums: bar.notes.drums.length,
+            bass: bar.notes.bass.length,
+            vocals: bar.notes.vocals.length,
+            other: bar.notes.other.length
+          }
+        }))
+      );
+      
+      // LLMプロンプトを作成する関数
+      const createPromptForBar = (
+        barData: BarData, 
+        barInfo: BarInfo,
+        keyCount: number,
+        enabledKeys: boolean[],
+        allowSimultaneousWhiteBlack: boolean,
+        keyTypes: ('white' | 'black')[],
+        customInstructions: string
+      ): string => {
+        // 有効な鍵盤の情報を作成
+        const enabledKeyInfo = enabledKeys
+          .map((enabled, index) => enabled ? `Key${index + 1}(${keyTypes[index]})` : null)
+          .filter(Boolean)
+          .join(', ');
+        
+        const stemNotesText = JSON.stringify(barData.notes, null, 2);
+        
+        return `You are a professional rhythm game chart designer. Create a chart for bar ${barData.barIndex + 1}.
+
+CONFIGURATION:
+- Total keys: ${keyCount}
+- Available keys: ${enabledKeyInfo}
+- White/Black key simultaneous press: ${allowSimultaneousWhiteBlack ? 'Allowed' : 'Not allowed'}
+- Time signature: ${barInfo.beat}/4
+- Tempo: ${barInfo.tempo} BPM
+
+STEM AUDIO DATA:
+${stemNotesText}
+
+RULES:
+1. Output ONLY a JSON array of notes in this exact format:
+   [{"key": 1, "beat": 1.0}, {"key": 3, "beat": 1.5}, ...]
+2. Key numbers range from 1 to ${keyCount}
+3. Beat positions must be quantized to 16th notes (0.25 increments): 1.0, 1.25, 1.5, 1.75, 2.0, etc.
+4. Beat positions must be within 1.0 to ${barInfo.beat}.0
+5. Only use enabled keys: ${enabledKeys.map((enabled, i) => enabled ? i + 1 : null).filter(Boolean).join(', ')}
+${!allowSimultaneousWhiteBlack ? `6. Do not place white and black keys simultaneously at the same beat position` : ''}
+
+DESIGN PHILOSOPHY:
+- Follow the rhythm and intensity of the stem audio data
+- Place notes where drums, bass, vocals, or other instruments have strong beats
+- Create engaging patterns that match the musical flow
+- Balance difficulty appropriately
+
+${customInstructions ? `CUSTOM INSTRUCTIONS:
+${customInstructions}` : ''}
+
+Output the JSON array only, no other text:`;
+      };
+      
+      // LLMからの出力をパースする関数
+      const parseAIResponse = (response: string): { key: number; beat: number }[] => {
+        try {
+          // レスポンスからJSONを抽出
+          const jsonMatch = response.match(/\[[\s\S]*?\]/);
+          if (!jsonMatch) {
+            console.warn("No JSON array found in AI response:", response);
+            return [];
+          }
+          
+          const parsed = JSON.parse(jsonMatch[0]);
+          if (!Array.isArray(parsed)) {
+            console.warn("AI response is not an array:", parsed);
+            return [];
+          }
+          
+          // バリデーション
+          return parsed.filter(note => {
+            if (typeof note.key !== 'number' || typeof note.beat !== 'number') {
+              console.warn("Invalid note format:", note);
+              return false;
+            }
+            if (note.key < 1 || note.key > keyCount) {
+              console.warn("Invalid key number:", note.key);
+              return false;
+            }
+            if (!enabledKeys[note.key - 1]) {
+              console.warn("Key not enabled:", note.key);
+              return false;
+            }
+            return true;
+          });
+        } catch (error) {
+          console.error("Failed to parse AI response:", error);
+          return [];
+        }
+      };
+      
+      // 譜面ノート（最終的な結果）
+      interface ChartNote {
+        key: number;
+        time: number; // 秒単位の時間
+        barIndex: number;
+        beat: number;
+      }
+      
+      const finalChartNotes: ChartNote[] = [];
+      
+      // 各小節をLLMで処理
+      let processedBars = 0;
+      const totalBarsCount = quantizedBarData.length;
+      
+      // プログレス初期化
+      setTotalBars(totalBarsCount);
+      setCurrentBar(0);
+      setProgressMessage("譜面生成を開始しています...");
+      
+      for (const barData of quantizedBarData) {
+        try {
+          // 対応する小節情報を取得
+          const barInfo = bars.find(b => b.barIndex === barData.barIndex);
+          if (!barInfo) {
+            console.warn(`Bar info not found for bar ${barData.barIndex}`);
+            continue;
+          }
+          
+          // プログレス更新
+          setCurrentBar(processedBars + 1);
+          setProgressMessage(`小節 ${barData.barIndex + 1} を処理中...`);
+          
+          // プロンプトを作成
+          const prompt = createPromptForBar(
+            barData,
+            barInfo,
+            keyCount,
+            enabledKeys,
+            allowSimultaneousWhiteBlack,
+            keyTypes,
+            customInstructions
+          );
+          
+          console.log(`Processing bar ${barData.barIndex + 1}/${totalBarsCount}...`);
+          
+          // LLMを呼び出し
+          const actualModelName = getActualModelName();
+          console.log(`Using model: ${actualModelName}`);
+          const aiResponse = await invoke<string>("call_llm", {
+            modelName: actualModelName,
+            query: prompt
+          });
+          
+          console.log(`AI response for bar ${barData.barIndex + 1}:`, aiResponse);
+          
+          // AIの出力をパース
+          const barNotes = parseAIResponse(aiResponse);
+          
+          // 時間に変換して最終結果に追加
+          for (const note of barNotes) {
+            // 拍位置を時間に変換
+            const beatDuration = 60 / barInfo.tempo; // 1拍の秒数
+            const timeInBar = (note.beat - 1) * beatDuration; // 小節内の時間（0基点）
+            const absoluteTime = barInfo.startTime + timeInBar; // 絶対時間
+            
+            finalChartNotes.push({
+              key: note.key,
+              time: absoluteTime,
+              barIndex: barData.barIndex,
+              beat: note.beat
+            });
+          }
+          
+          processedBars++;
+          console.log(`Completed bar ${barData.barIndex + 1}, generated ${barNotes.length} notes`);
+          
+        } catch (error) {
+          console.error(`Error processing bar ${barData.barIndex + 1}:`, error);
+          // エラーがあっても処理を続行
+          processedBars++;
+        }
+      }
+      
+      // 最終処理のプログレス更新
+      setProgressMessage("譜面データを統合しています...");
+      
+      // 時間順でソート
+      finalChartNotes.sort((a, b) => a.time - b.time);
+      
+      console.log("=== 譜面生成完了 ===");
+      console.log(`処理した小節数: ${processedBars}/${totalBarsCount}`);
+      console.log(`生成されたノート数: ${finalChartNotes.length}`);
+      console.log("最終的な譜面データ:", finalChartNotes);
+      
+      // 統計情報
+      const notesByKey = finalChartNotes.reduce((acc, note) => {
+        acc[note.key] = (acc[note.key] || 0) + 1;
+        return acc;
+      }, {} as Record<number, number>);
+      
+      console.log("鍵盤別ノート数:", notesByKey);
+      
+      // 完了プログレス更新
+      setProgressMessage("譜面生成が完了しました！");
+      
+      // finalChartNotesをもとにChartEvent[]を作り、Chartを作成、storeにpushする処理
+      setProgressMessage("譜面をプロジェクトに追加しています...");
+      
+      // ChartEventの配列を作成
+      const chartEvents: ChartEvent[] = [];
+      
+      for (const note of finalChartNotes) {
+        // 時間をTemporalPositionに変換
+        const position = TemporalPosition.createWithSeconds(note.time);
+        
+        // 鍵盤番号をLane（0ベース）に変換
+        const lane: Lane = note.key - 1;
+        
+        // SingleNoteEventを作成
+        const noteEvent = new SingleNoteEvent(
+          crypto.randomUUID(),
+          position,
+          lane
+        );
+        
+        chartEvents.push(noteEvent);
+      }
+      
+      // 時間順でソート（念のため）
+      chartEvents.sort((a, b) => Number(a.position.nanoseconds - b.position.nanoseconds));
+      
+      // 新しいChartを作成
+      const newChart = new Chart(
+        crypto.randomUUID(),
+        chartEvents,
+        keyCount, // laneNumber として鍵盤数を設定
+        `自動生成${new Date().toLocaleString('ja-JP')}`
+      );
+      
+      // storeのprojectのchartsに追加
+      store.project.charts.push(newChart);
+      
+      console.log("新しい譜面をプロジェクトに追加しました:", {
+        chartId: newChart.uuid,
+        eventCount: chartEvents.length,
+        laneCount: keyCount,
+        label: newChart.label
+      });
       
 
       toaster.create({
@@ -500,6 +779,71 @@ const GenerateNewChartDialog = forwardRef<GenerateNewChartDialogRef>((_props, re
           <Box mt={3} p={3} border="1px solid" borderColor="gray.200" borderRadius="md">
             <Text fontSize="sm" fontWeight="bold" mb={3}>譜面生成設定</Text>
             
+            {/* AIモデル選択 */}
+            <Box mb={4}>
+              <Text fontSize="sm" mb={2}>AIモデル</Text>
+              <Box>
+                {availableModels.map((model) => (
+                  <Box key={model.value} mb={2}>
+                    <Button
+                      size="sm"
+                      variant={selectedModel === model.value && !useCustomModel ? "solid" : "outline"}
+                      colorScheme={selectedModel === model.value && !useCustomModel ? "blue" : "gray"}
+                      onClick={() => {
+                        setSelectedModel(model.value);
+                        setUseCustomModel(false);
+                      }}
+                      width="100%"
+                      textAlign="left"
+                      justifyContent="flex-start"
+                      h="auto"
+                      p={3}
+                    >
+                      <Box>
+                        <Text fontSize="sm" fontWeight="bold">{model.label}</Text>
+                        <Text fontSize="xs" color={selectedModel === model.value && !useCustomModel ? "blue.100" : "gray.500"}>
+                          {model.description}
+                        </Text>
+                      </Box>
+                    </Button>
+                  </Box>
+                ))}
+                
+                {/* カスタムモデル入力 */}
+                <Box mt={3} p={3} border="1px solid" borderColor={useCustomModel ? "blue.300" : "gray.200"} borderRadius="md" bg={useCustomModel ? "blue.50" : "transparent"}>
+                  <Checkbox
+                    checked={useCustomModel}
+                    onCheckedChange={(details) => setUseCustomModel(details.checked === true)}
+                    mb={2}
+                  >
+                    <Text fontSize="sm" fontWeight="bold">カスタムモデル</Text>
+                  </Checkbox>
+                  
+                  {useCustomModel && (
+                    <Box mt={2}>
+                      <Input
+                        placeholder="例: llama3.2:7b, gemma2:9b, など"
+                        value={customModel}
+                        onChange={(e) => setCustomModel(e.target.value)}
+                        size="sm"
+                      />
+                      <Text fontSize="xs" color="gray.500" mt={1}>
+                        Ollamaで利用可能な任意のモデル名を入力してください
+                      </Text>
+                    </Box>
+                  )}
+                </Box>
+              </Box>
+              <Text fontSize="xs" color="gray.500" mt={2}>
+                選択したモデルが初回使用時に自動でダウンロードされます
+              </Text>
+              {useCustomModel && customModel.trim() && (
+                <Text fontSize="xs" color="blue.600" mt={1}>
+                  使用予定モデル: {customModel.trim()}
+                </Text>
+              )}
+            </Box>
+            
             {/* 鍵盤数設定 */}
             <Box mb={4}>
               <Text fontSize="sm" mb={2}>鍵盤数</Text>
@@ -645,9 +989,59 @@ const GenerateNewChartDialog = forwardRef<GenerateNewChartDialogRef>((_props, re
           <DialogTitle>譜面を自動生成中</DialogTitle>
         </DialogHeader>
         <DialogBody>
-          <Box display="flex" alignItems="center" gap={4}>
-            <Spinner size="lg" />
-            <Text>譜面を自動生成しています。緑茶でも飲んでてください...</Text>
+          <Box display="flex" flexDirection="column" gap={4}>
+            {/* プログレスバー */}
+            {totalBars > 0 && (
+              <Box>
+                <Text fontSize="sm" mb={2}>
+                  進行状況: {currentBar} / {totalBars} 小節
+                </Text>
+                {/* カスタムプログレスバー */}
+                <Box 
+                  w="100%" 
+                  h="20px" 
+                  bg="gray.200" 
+                  borderRadius="md" 
+                  overflow="hidden"
+                  position="relative"
+                >
+                  <Box
+                    h="100%"
+                    bg="blue.500"
+                    transition="width 0.3s ease"
+                    width={`${(currentBar / totalBars) * 100}%`}
+                  />
+                  <Text 
+                    position="absolute" 
+                    top="50%" 
+                    left="50%" 
+                    transform="translate(-50%, -50%)"
+                    fontSize="xs" 
+                    color="white"
+                    fontWeight="bold"
+                    textShadow="1px 1px 1px rgba(0,0,0,0.5)"
+                  >
+                    {Math.round((currentBar / totalBars) * 100)}%
+                  </Text>
+                </Box>
+                <Text fontSize="xs" color="gray.500" mt={1}>
+                  {Math.round((currentBar / totalBars) * 100)}% 完了
+                </Text>
+              </Box>
+            )}
+            
+            {/* メッセージとスピナー */}
+            <Box display="flex" alignItems="center" gap={4}>
+              <Spinner size="lg" />
+              <Box>
+                <Text>{progressMessage || "譜面を自動生成しています。緑茶でも飲んでてください..."}</Text>
+                {totalBars > 0 && (
+                  <Text fontSize="sm" color="gray.600" mt={1}>
+                    小節の処理には時間がかかる場合があります
+                  </Text>
+                )}
+              </Box>
+            </Box>
           </Box>
         </DialogBody>
       </DialogContent>
