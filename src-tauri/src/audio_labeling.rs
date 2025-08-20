@@ -6,12 +6,14 @@ use symphonia::core::io::MediaSourceStream;
 use symphonia::core::meta::MetadataOptions;
 use symphonia::core::probe::Hint;
 use std::io::Cursor;
-use aubio_rs::{Notes, Smpl};
+use aubio_rs::{Notes, Onset, OnsetMode, Smpl, Tempo};
 
-// 定数の定義
-const BUF_SIZE: usize = 512;
-const HOP_SIZE: usize = 256;
+// 改善された定数の定義
+const BUF_SIZE: usize = 1024;  // より大きなバッファサイズで精度向上
+const HOP_SIZE: usize = 512;   // バッファサイズの半分に設定
 const I16_TO_SMPL: Smpl = 1.0 / (1 << 16) as Smpl;
+const SILENCE_THRESHOLD: f32 = -50.0;  // dBでの無音閾値
+const MIN_INTER_ONSET_INTERVAL: f64 = 0.05;  // 最小オンセット間隔（50ms）
 
 #[tauri::command]
 pub async fn onset(
@@ -27,7 +29,7 @@ pub async fn onset(
 }
 
 fn onset_blocking(input_base64_ogg_vorbis: String) -> Result<Vec<[f64; 3]>, String> {
-    log::info!("Running onset detection with input base64 OGG Vorbis data");
+    log::info!("Running improved onset detection with input base64 OGG Vorbis data");
 
     log::info!("Starting base64 decode...");
     // Data URLのプレフィックス "data:audio/ogg;base64," を除去
@@ -101,7 +103,7 @@ fn onset_blocking(input_base64_ogg_vorbis: String) -> Result<Vec<[f64; 3]>, Stri
         }
     };
     
-    log::info!("Creating Notes analyzer...");
+    log::info!("Creating improved Notes analyzer...");
     let mut notes = match Notes::new(BUF_SIZE, HOP_SIZE, sample_rate) {
         Ok(notes) => {
             log::info!("Notes analyzer created successfully");
@@ -112,10 +114,33 @@ fn onset_blocking(input_base64_ogg_vorbis: String) -> Result<Vec<[f64; 3]>, Stri
             return Err(format!("Failed to create Notes: {:?}", e));
         }
     };
-    let period = 1.0 / sample_rate as Smpl;
 
-    let mut time = 0.0;
-    let mut offset = 0;
+    // オンセット検出器も追加で使用
+    log::info!("Creating Onset detector...");
+    let mut onset_detector = match Onset::new(OnsetMode::Complex, BUF_SIZE, HOP_SIZE, sample_rate) {
+        Ok(detector) => {
+            log::info!("Onset detector created successfully");
+            Some(detector)
+        }
+        Err(e) => {
+            log::warn!("Failed to create Onset detector: {:?}", e);
+            None
+        }
+    };
+    
+    // テンポ検出器も追加
+    log::info!("Creating Tempo detector...");
+    let _tempo_detector = match Tempo::new(OnsetMode::Complex, BUF_SIZE, HOP_SIZE, sample_rate) {
+        Ok(detector) => {
+            log::info!("Tempo detector created successfully");
+            Some(detector)
+        }
+        Err(e) => {
+            log::warn!("Failed to create Tempo detector: {:?}", e);
+            None
+        }
+    };
+
     let mut audio_samples: Vec<f32> = Vec::new();
 
     log::info!("Decoding audio samples");
@@ -157,25 +182,131 @@ fn onset_blocking(input_base64_ogg_vorbis: String) -> Result<Vec<[f64; 3]>, Stri
 
     log::info!("Extracted audio samples: {}", audio_samples.len());
 
+    // 音声の前処理：正規化
+    normalize_audio(&mut audio_samples);
+    
+    // ローパスフィルタを適用してノイズを除去
+    apply_lowpass_filter(&mut audio_samples, sample_rate as f32);
+
     let mut results_f64: Vec<[f64; 3]> = Vec::new();
+    let mut onset_times: Vec<f64> = Vec::new();
 
     // HOP_SIZEずつ処理
     let mut sample_index = 0;
-    while sample_index + HOP_SIZE <= audio_samples.len() {
-        let block = &audio_samples[sample_index..sample_index + HOP_SIZE];
+    while sample_index + BUF_SIZE <= audio_samples.len() {
+        let block = &audio_samples[sample_index..sample_index + BUF_SIZE];
         
-        let results = notes.do_result(block)
+        // 無音部分をスキップ
+        if is_silence(block) {
+            sample_index += HOP_SIZE;
+            continue;
+        }
+        
+        let time = sample_index as f64 / sample_rate as f64;
+        
+        // Notes検出
+        let note_results = notes.do_result(block)
             .map_err(|e| format!("Notes processing error: {:?}", e))?;
             
-        for note in results {
-            results_f64.push([note.pitch as f64, note.velocity as f64, time]);
+        // オンセット検出（利用可能な場合のみ）
+        let onset_detected = if let Some(ref mut detector) = onset_detector {
+            match detector.do_result(block) {
+                Ok(result) => result > 0.0,
+                Err(_) => false,
+            }
+        } else {
+            false
+        };
+        
+        // オンセットが検出された場合
+        if onset_detected {
+            // 最小間隔チェック
+            if onset_times.is_empty() || time - onset_times.last().unwrap() > MIN_INTER_ONSET_INTERVAL {
+                onset_times.push(time);
+                
+                // このタイミングでのノート情報を優先的に記録
+                for note in note_results {
+                    if note.velocity > 0.3 {  // 閾値を設定して弱いノートを除外
+                        results_f64.push([note.pitch as f64, note.velocity as f64, time]);
+                    }
+                }
+            }
+        } else {
+            // オンセットがない場合でも、強いノートは記録
+            for note in note_results {
+                if note.velocity > 0.5 {  // より高い閾値
+                    results_f64.push([note.pitch as f64, note.velocity as f64, time]);
+                }
+            }
         }
 
-        offset += HOP_SIZE;
-        time = (offset as Smpl * period) as f64;
         sample_index += HOP_SIZE;
     }
 
-    log::info!("{}", time);
+    // 結果を時間順にソート
+    results_f64.sort_by(|a, b| a[2].partial_cmp(&b[2]).unwrap());
+    
+    // 重複する近いタイミングのノートを統合
+    let results_f64 = merge_close_notes(results_f64);
+
+    log::info!("Detected {} notes/onsets", results_f64.len());
     Ok(results_f64)
+}
+
+// 音声正規化関数
+fn normalize_audio(samples: &mut [f32]) {
+    let max_amplitude = samples.iter().map(|&s| s.abs()).fold(0.0f32, f32::max);
+    if max_amplitude > 0.0 {
+        let scale = 0.95 / max_amplitude;
+        for sample in samples.iter_mut() {
+            *sample *= scale;
+        }
+    }
+}
+
+// 簡単なローパスフィルタ
+fn apply_lowpass_filter(samples: &mut [f32], sample_rate: f32) {
+    let cutoff = 8000.0; // 8kHzでカットオフ
+    let rc = 1.0 / (2.0 * std::f32::consts::PI * cutoff);
+    let dt = 1.0 / sample_rate;
+    let alpha = dt / (rc + dt);
+    
+    if samples.len() > 1 {
+        for i in 1..samples.len() {
+            samples[i] = samples[i-1] + alpha * (samples[i] - samples[i-1]);
+        }
+    }
+}
+
+// 無音判定関数
+fn is_silence(block: &[f32]) -> bool {
+    let rms = (block.iter().map(|&s| s * s).sum::<f32>() / block.len() as f32).sqrt();
+    let db = 20.0 * rms.log10();
+    db < SILENCE_THRESHOLD
+}
+
+// 近いタイミングのノートを統合
+fn merge_close_notes(notes: Vec<[f64; 3]>) -> Vec<[f64; 3]> {
+    if notes.is_empty() {
+        return notes;
+    }
+    
+    let mut merged: Vec<[f64; 3]> = Vec::new();
+    let mut current = notes[0];
+    
+    for note in notes.into_iter().skip(1) {
+        // 時間差が50ms以内で、ピッチが近い場合は統合
+        if (note[2] - current[2]).abs() < 0.05 && (note[0] - current[0]).abs() < 2.0 {
+            // より強いベロシティを採用
+            if note[1] > current[1] {
+                current = note;
+            }
+        } else {
+            merged.push(current);
+            current = note;
+        }
+    }
+    merged.push(current);
+    
+    merged
 }
