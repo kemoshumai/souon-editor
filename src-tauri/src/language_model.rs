@@ -127,8 +127,20 @@ async fn get_vram_from_nvidia_smi() -> Result<f32, String> {
     if let Ok(nvidia_output) = nvidia_command.output() {
         if nvidia_output.status.success() {
             let vram_str = String::from_utf8_lossy(&nvidia_output.stdout);
-            if let Ok(vram_mb) = vram_str.trim().parse::<f32>() {
-                return Ok(vram_mb / 1024.0); // MBからGBに変換
+            let mut max_vram = 0.0f32;
+            
+            // 複数行の出力を処理（複数GPUの場合）
+            for line in vram_str.lines() {
+                if let Ok(vram_mb) = line.trim().parse::<f32>() {
+                    let vram_gb = vram_mb / 1024.0; // MBからGBに変換
+                    if vram_gb > max_vram {
+                        max_vram = vram_gb;
+                    }
+                }
+            }
+            
+            if max_vram > 0.0 {
+                return Ok(max_vram);
             }
         }
     }
@@ -145,9 +157,19 @@ async fn get_vram_from_dxdiag() -> Result<f32, String> {
             Start-Sleep -Seconds 2
             if (Test-Path $xmlPath) {
                 $content = Get-Content $xmlPath -Raw
-                if ($content -match '<DedicatedMemory>(\d+)\s*MB</DedicatedMemory>') {
-                    $vramMB = [int]$matches[1]
-                    [math]::Round($vramMB / 1024, 2)
+                $maxVramMB = 0
+                
+                # 複数のDedicatedMemoryエントリを検索
+                $matches = [regex]::Matches($content, '<DedicatedMemory>(\d+)\s*MB</DedicatedMemory>')
+                foreach ($match in $matches) {
+                    $vramMB = [int]$match.Groups[1].Value
+                    if ($vramMB -gt $maxVramMB) {
+                        $maxVramMB = $vramMB
+                    }
+                }
+                
+                if ($maxVramMB -gt 0) {
+                    [math]::Round($maxVramMB / 1024, 2)
                 } else {
                     "0"
                 }
