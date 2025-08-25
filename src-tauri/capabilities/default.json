@@ -18,6 +18,8 @@
     "fs:allow-applocaldata-write-recursive",
     "fs:read-all",
     "fs:allow-applocaldata-read-recursive",
-    "log:default"
+    "log:default",
+    "clipboard-manager:allow-read-text",
+    "clipboard-manager:allow-write-text"
   ]
 }

@@ -10,6 +10,7 @@ import ChartTrackBackground from "./ChartTrack/ChartTrackBackground";
 import Chart from "../store/chart";
 import TemporalPosition from "../store/temporalPosition";
 import ProposalSpeedChangeEvent from "./ChartTrack/ProposalSpeedChangeEvent";
+import ChartTrackMenu from "./ChartTrack/ChartTrackMenu";
 
 export default function ChartTrack(props: { uuid: string; }) {
 
@@ -118,6 +119,10 @@ export default function ChartTrack(props: { uuid: string; }) {
       </Flex>
       <Center><SegmentedControl items={["Stripe", "Order", "Mirror"] } size={"xs"} w={12} defaultValue={"Order"} onValueChange={e => setMode(e.value as "Stripe" | "Order" | "Mirror")} /></Center>
     </Stack>
+    {/* スパナマークメニューを右下に配置 */}
+    <Bleed position={"absolute"} right={2} bottom={2}>
+      <ChartTrackMenu chartUuid={props.uuid} />
+    </Bleed>
   </>;
 
   return (
