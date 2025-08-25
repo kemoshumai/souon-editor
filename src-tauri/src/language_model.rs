@@ -13,7 +13,7 @@ pub async fn call_llm(model_name: &str, query: &str) -> Result<String, String> {
             .backend(llm::builder::LLMBackend::Ollama)
             .base_url(base_url)
             .model(model_name)
-            .max_tokens(1000)
+            .max_tokens(4000)  // 譜面生成に十分な長さに設定
             .temperature(0.7)
             .stream(false)
             .build()
@@ -79,6 +79,40 @@ pub async fn call_llm(model_name: &str, query: &str) -> Result<String, String> {
             }
         }
     }
+}
+
+#[tauri::command]
+pub async fn call_google_ai(model_name: &str, query: &str, api_key: &str) -> Result<String, String> {
+    // ヘルパー関数を定義してSendの問題を回避
+    async fn make_google_ai_request(model_name: &str, query: &str, api_key: &str) -> Result<String, String> {
+        let llm = LLMBuilder::new()
+            .backend(llm::builder::LLMBackend::Google)
+            .model(model_name)
+            .api_key(api_key)
+            .max_tokens(8000)  // Geminiは長い出力に対応しているので大きく設定
+            .temperature(0.7)
+            .stream(false)
+            .build()
+            .map_err(|e| format!("Failed to build LLM (Google): {}", e))?;
+
+        let messages = vec![
+            ChatMessage::user()
+                .content(query)
+                .build(),
+        ];
+
+        match llm.chat(&messages).await {
+            Ok(response) => {
+                let text = response.text().unwrap_or_default().to_string();
+                Ok(text)
+            },
+            Err(err) => {
+                Err(format!("Google AI Studio request failed: {}", err))
+            }
+        }
+    }
+
+    make_google_ai_request(model_name, query, api_key).await
 }
 
 #[tauri::command]

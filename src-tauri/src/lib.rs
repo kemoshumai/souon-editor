@@ -66,6 +66,7 @@ pub fn run() {
             stem::demucs,
             audio_labeling::onset,
             language_model::call_llm,
+            language_model::call_google_ai,
             language_model::is_ollama_installed,
             language_model::get_vram
         ])

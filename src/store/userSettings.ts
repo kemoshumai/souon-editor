@@ -4,10 +4,14 @@ import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 export default class UserSettings {
   background: string;
   backgroundBlur: boolean;
+  aiProvider: 'ollama' | 'google-ai-studio';
+  googleAiApiKey: string;
 
   constructor() {
     this.background = "";
     this.backgroundBlur = false;
+    this.aiProvider = 'ollama';
+    this.googleAiApiKey = "";
   }
 
   setBackground(background: string): void {
@@ -25,13 +29,34 @@ export default class UserSettings {
   getBackgroundBlur(): boolean {
     return this.backgroundBlur;
   }
+
+  setAiProvider(provider: 'ollama' | 'google-ai-studio'): void {
+    this.aiProvider = provider;
+  }
+
+  getAiProvider(): 'ollama' | 'google-ai-studio' {
+    return this.aiProvider;
+  }
+
+  setGoogleAiApiKey(apiKey: string): void {
+    this.googleAiApiKey = apiKey;
+  }
+
+  getGoogleAiApiKey(): string {
+    return this.googleAiApiKey;
+  }
   
   static createDefault(): UserSettings {
     return new UserSettings();
   }
 
   toJSON(): string {
-    return JSON.stringify({ background: this.background, backgroundBlur: this.backgroundBlur });
+    return JSON.stringify({ 
+      background: this.background, 
+      backgroundBlur: this.backgroundBlur,
+      aiProvider: this.aiProvider,
+      googleAiApiKey: this.googleAiApiKey
+    });
   }
 
   async save(): Promise<void> {
@@ -48,6 +73,8 @@ export default class UserSettings {
       const settings = new UserSettings();
       settings.background = json.background || "";
       settings.backgroundBlur = json.backgroundBlur || false;
+      settings.aiProvider = json.aiProvider || 'ollama';
+      settings.googleAiApiKey = json.googleAiApiKey || "";
       return settings;
     } catch (error) {
       console.error("Failed to load user settings:", error);

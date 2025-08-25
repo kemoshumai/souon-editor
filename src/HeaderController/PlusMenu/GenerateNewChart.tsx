@@ -34,9 +34,10 @@ const GenerateNewChartDialog = forwardRef<GenerateNewChartDialogRef>((_props, re
   const [customModel, setCustomModel] = useState("");
   const [useCustomModel, setUseCustomModel] = useState(false);
   const [barsPerBatch, setBarsPerBatch] = useState(1);
+  const [googleAiApiKey, setGoogleAiApiKey] = useState("");
   
-  // 利用可能なモデルのリスト
-  const availableModels = [
+  // 利用可能なOllamaモデルのリスト
+  const availableOllamaModels = [
     { value: "phi4:14b", label: "Phi-4 14B (推奨)", description: "バランスの良い高性能モデル" },
     { value: "llama3.2:3b", label: "Llama 3.2 3B", description: "軽量で高速" },
     { value: "llama3.2:1b", label: "Llama 3.2 1B", description: "最軽量" },
@@ -45,9 +46,20 @@ const GenerateNewChartDialog = forwardRef<GenerateNewChartDialogRef>((_props, re
     { value: "mistral:7b", label: "Mistral 7B", description: "汎用モデル" },
   ];
 
+  // 利用可能なGoogle AI Studioモデルのリスト
+  const availableGoogleModels = [
+    { value: "gemini-2.0-flash-exp", label: "Gemini 2.0 Flash (推奨)", description: "最新の高性能モデル" },
+    { value: "gemini-1.5-pro", label: "Gemini 1.5 Pro", description: "バランスの良い高性能モデル" },
+    { value: "gemini-1.5-flash", label: "Gemini 1.5 Flash", description: "高速で軽量" },
+  ];
+
   // 実際に使用するモデル名を取得する関数
   const getActualModelName = () => {
-    return useCustomModel && customModel.trim() ? customModel.trim() : selectedModel;
+    if (snap.userSettings.aiProvider === 'google-ai-studio') {
+      return selectedModel; // Google AI Studioの場合はそのまま
+    } else {
+      return useCustomModel && customModel.trim() ? customModel.trim() : selectedModel;
+    }
   };
   
   // プログレス関連のstate
@@ -122,6 +134,19 @@ const GenerateNewChartDialog = forwardRef<GenerateNewChartDialogRef>((_props, re
 
   // 初期化
   useEffect(() => {
+    // ユーザー設定からAPIキーを読み込む
+    setGoogleAiApiKey(snap.userSettings.googleAiApiKey || "");
+    
+    // 初期モデル選択を設定
+    if (snap.userSettings.aiProvider === 'google-ai-studio') {
+      setSelectedModel("gemini-2.0-flash-exp");
+    } else {
+      setSelectedModel("phi4:14b");
+    }
+  }, [snap.userSettings.aiProvider, snap.userSettings.googleAiApiKey]);
+
+  // 鍵盤タイプの初期化
+  useEffect(() => {
     if (keyTypes.length === 0) {
       setKeyTypes(generatePianoLayout(keyCount));
     }
@@ -142,13 +167,13 @@ const GenerateNewChartDialog = forwardRef<GenerateNewChartDialogRef>((_props, re
     setEnabledKeys(newEnabledKeys);
   };
 
-  // ダイアログが開かれるたびにVRAMとOllamaをチェック
+  // ダイアログが開かれるたびにVRAMとOllamaをチェック（Ollamaタブのみ）
   useEffect(() => {
-    if (showNewChartConfirmDialog) {
+    if (showNewChartConfirmDialog && (snap.userSettings.aiProvider || 'ollama') === 'ollama') {
       checkVram();
       checkOllama();
     }
-  }, [showNewChartConfirmDialog]);
+  }, [showNewChartConfirmDialog, snap.userSettings.aiProvider]);
 
   // VRAMステータスを判定する関数
   const getVramStatus = () => {
@@ -728,11 +753,25 @@ IMPORTANT: Output ONLY the JSON object, no markdown formatting, no code blocks, 
             
             // LLMを呼び出し
             const actualModelName = getActualModelName();
-            console.log(`Using model: ${actualModelName}`);
-            aiResponse = await invoke<string>("call_llm", {
-              modelName: actualModelName,
-              query: prompt
-            });
+            const provider = snap.userSettings.aiProvider || 'ollama';
+            console.log(`Using provider: ${provider}, model: ${actualModelName}`);
+            
+            if (provider === 'google-ai-studio') {
+              const apiKey = snap.userSettings.googleAiApiKey;
+              if (!apiKey) {
+                throw new Error("Google AI Studio APIキーが設定されていません。設定画面で設定してください。");
+              }
+              aiResponse = await invoke<string>("call_google_ai", {
+                modelName: actualModelName,
+                query: prompt,
+                apiKey: apiKey
+              });
+            } else {
+              aiResponse = await invoke<string>("call_llm", {
+                modelName: actualModelName,
+                query: prompt
+              });
+            }
             
             console.log(`AI response for bar ${batchStart}:`, aiResponse);
             
@@ -772,11 +811,25 @@ IMPORTANT: Output ONLY the JSON object, no markdown formatting, no code blocks, 
             
             // LLMを呼び出し
             const actualModelName = getActualModelName();
-            console.log(`Using model: ${actualModelName}`);
-            aiResponse = await invoke<string>("call_llm", {
-              modelName: actualModelName,
-              query: prompt
-            });
+            const provider = snap.userSettings.aiProvider || 'ollama';
+            console.log(`Using provider: ${provider}, model: ${actualModelName}`);
+            
+            if (provider === 'google-ai-studio') {
+              const apiKey = snap.userSettings.googleAiApiKey;
+              if (!apiKey) {
+                throw new Error("Google AI Studio APIキーが設定されていません。設定画面で設定してください。");
+              }
+              aiResponse = await invoke<string>("call_google_ai", {
+                modelName: actualModelName,
+                query: prompt,
+                apiKey: apiKey
+              });
+            } else {
+              aiResponse = await invoke<string>("call_llm", {
+                modelName: actualModelName,
+                query: prompt
+              });
+            }
             
             console.log(`AI response for bars ${batchStart}-${batchEnd}:`, aiResponse);
             
@@ -950,160 +1003,258 @@ IMPORTANT: Output ONLY the JSON object, no markdown formatting, no code blocks, 
           {/* 重要な注意事項 */}
           <Box mt={4} p={3} border="1px solid" borderColor="blue.200" borderRadius="md" bg="blue.50">
             <Text fontSize="sm" fontWeight="bold" mb={2} color="blue.700">⚠️ 初回実行時の注意</Text>
-            <Text fontSize="sm" color="blue.600">
-              初回実行時には、AIモデルのダウンロードのため約5GBの空き容量が必要です。
-            </Text>
+            {(snap.userSettings.aiProvider || 'ollama') === 'ollama' ? (
+              <Text fontSize="sm" color="blue.600">
+                初回実行時には、AIモデルのダウンロードのため約5GBの空き容量が必要です。
+              </Text>
+            ) : (
+              <Text fontSize="sm" color="blue.600">
+                Google AI Studio APIキーが必要です。設定画面でAPIキーを入力してください。
+              </Text>
+            )}
           </Box>
           
-          {/* VRAM情報表示 */}
-          <Box mt={4} p={3} border="1px solid" borderColor="gray.200" borderRadius="md">
-            <Text fontSize="sm" fontWeight="bold" mb={2}>VRAM使用量チェック</Text>
-            {isVramLoading ? (
-              <Box display="flex" alignItems="center" gap={2}>
-                <Spinner size="sm" />
-                <Text fontSize="sm">VRAM情報を取得中...</Text>
+          {/* Ollamaタブ固有の情報表示 */}
+          {(snap.userSettings.aiProvider || 'ollama') === 'ollama' && (
+            <>
+              {/* VRAM情報表示 */}
+              <Box mt={4} p={3} border="1px solid" borderColor="gray.200" borderRadius="md">
+                <Text fontSize="sm" fontWeight="bold" mb={2}>VRAM使用量チェック</Text>
+                {isVramLoading ? (
+                  <Box display="flex" alignItems="center" gap={2}>
+                    <Spinner size="sm" />
+                    <Text fontSize="sm">VRAM情報を取得中...</Text>
+                  </Box>
+                ) : vramError ? (
+                  <Text fontSize="sm" color="orange">
+                    VRAM情報の取得に失敗しました。目安として使用してください。
+                  </Text>
+                ) : (
+                  <Text fontSize="sm" color={vramStatus.color}>
+                    {vramStatus.message}
+                  </Text>
+                )}
+                
+                {vramGb !== null && vramGb < 15 && (
+                  <Text fontSize="xs" color="gray.500" mt={1}>
+                    ※ 15GB未満の場合でも実行可能ですが、処理に時間がかかる可能性があります。
+                  </Text>
+                )}
+                
+                {vramGb !== null && vramGb <= 7 && (
+                  <Text fontSize="xs" color="red.500" mt={1}>
+                    ※ 7GB以下の環境では実行が制限されています。
+                  </Text>
+                )}
               </Box>
-            ) : vramError ? (
-              <Text fontSize="sm" color="orange">
-                VRAM情報の取得に失敗しました。目安として使用してください。
-              </Text>
-            ) : (
-              <Text fontSize="sm" color={vramStatus.color}>
-                {vramStatus.message}
-              </Text>
-            )}
-            
-            {vramGb !== null && vramGb < 15 && (
-              <Text fontSize="xs" color="gray.500" mt={1}>
-                ※ 15GB未満の場合でも実行可能ですが、処理に時間がかかる可能性があります。
-              </Text>
-            )}
-            
-            {vramGb !== null && vramGb <= 7 && (
-              <Text fontSize="xs" color="red.500" mt={1}>
-                ※ 7GB以下の環境では実行が制限されています。
-              </Text>
-            )}
-          </Box>
 
-          {/* Ollama情報表示 */}
-          <Box mt={3} p={3} border="1px solid" borderColor="gray.200" borderRadius="md">
-            <Text fontSize="sm" fontWeight="bold" mb={2}>Ollamaインストール確認</Text>
-            {isOllamaLoading ? (
-              <Box display="flex" alignItems="center" gap={2}>
-                <Spinner size="sm" />
-                <Text fontSize="sm">Ollamaを確認中...</Text>
+              {/* Ollama情報表示 */}
+              <Box mt={3} p={3} border="1px solid" borderColor="gray.200" borderRadius="md">
+                <Text fontSize="sm" fontWeight="bold" mb={2}>Ollamaインストール確認</Text>
+                {isOllamaLoading ? (
+                  <Box display="flex" alignItems="center" gap={2}>
+                    <Spinner size="sm" />
+                    <Text fontSize="sm">Ollamaを確認中...</Text>
+                  </Box>
+                ) : isOllamaInstalled === null ? (
+                  <Box>
+                    <Text fontSize="sm" color="orange">
+                      Ollamaの確認に失敗しました。
+                    </Text>
+                    <Text fontSize="xs" color="gray.500" mt={1}>
+                      ※ インストールされていない場合は実行が失敗します。
+                    </Text>
+                    <Text fontSize="xs" color="blue.600" mt={1}>
+                      ℹ️ Ollamaがインストール済みの場合、タスクトレイに常駐中またはGUIで実行中か確認してください。
+                    </Text>
+                  </Box>
+                ) : isOllamaInstalled ? (
+                  <Box>
+                    <Text fontSize="sm" color="green" mb={1}>
+                      インストール済み
+                    </Text>
+                    <Text fontSize="xs" color="blue.600" mt={1}>
+                      ℹ️ Ollamaがタスクトレイに常駐中、またはGUIで実行中である必要があります。
+                    </Text>
+                  </Box>
+                ) : (
+                  <Box>
+                    <Text fontSize="sm" color="red" mb={2}>
+                      Ollamaがインストールされていません
+                    </Text>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      colorScheme="blue"
+                      onClick={() => window.open('https://ollama.com/download', '_blank')}
+                    >
+                      Ollamaをダウンロード
+                    </Button>
+                    <Text fontSize="xs" color="red.500" mt={2}>
+                      ※ Ollamaがインストールされていない場合、実行は失敗します。
+                    </Text>
+                    <Text fontSize="xs" color="blue.600" mt={1}>
+                      ℹ️ インストール後は、タスクトレイに常駐させるかGUIで実行する必要があります。
+                    </Text>
+                  </Box>
+                )}
               </Box>
-            ) : isOllamaInstalled === null ? (
-              <Box>
-                <Text fontSize="sm" color="orange">
-                  Ollamaの確認に失敗しました。
-                </Text>
-                <Text fontSize="xs" color="gray.500" mt={1}>
-                  ※ インストールされていない場合は実行が失敗します。
-                </Text>
-                <Text fontSize="xs" color="blue.600" mt={1}>
-                  ℹ️ Ollamaがインストール済みの場合、タスクトレイに常駐中またはGUIで実行中か確認してください。
-                </Text>
-              </Box>
-            ) : isOllamaInstalled ? (
-              <Box>
-                <Text fontSize="sm" color="green" mb={1}>
-                  インストール済み
-                </Text>
-                <Text fontSize="xs" color="blue.600" mt={1}>
-                  ℹ️ Ollamaがタスクトレイに常駐中、またはGUIで実行中である必要があります。
-                </Text>
-              </Box>
-            ) : (
-              <Box>
-                <Text fontSize="sm" color="red" mb={2}>
-                  Ollamaがインストールされていません
-                </Text>
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  colorScheme="blue"
-                  onClick={() => window.open('https://ollama.com/download', '_blank')}
-                >
-                  Ollamaをダウンロード
-                </Button>
-                <Text fontSize="xs" color="red.500" mt={2}>
-                  ※ Ollamaがインストールされていない場合、実行は失敗します。
-                </Text>
-                <Text fontSize="xs" color="blue.600" mt={1}>
-                  ℹ️ インストール後は、タスクトレイに常駐させるかGUIで実行する必要があります。
-                </Text>
-              </Box>
-            )}
-          </Box>
+            </>
+          )}
 
           {/* 譜面生成設定 */}
           <Box mt={3} p={3} border="1px solid" borderColor="gray.200" borderRadius="md">
             <Text fontSize="sm" fontWeight="bold" mb={3}>譜面生成設定</Text>
             
+            {/* AIプロバイダー選択 */}
+            <Box mb={4}>
+              <Text fontSize="sm" mb={2}>AIプロバイダー</Text>
+              <HStack gap={2}>
+                <Button
+                  size="sm"
+                  variant={(snap.userSettings.aiProvider || 'ollama') === 'ollama' ? "solid" : "outline"}
+                  colorScheme={(snap.userSettings.aiProvider || 'ollama') === 'ollama' ? "blue" : "gray"}
+                  onClick={() => {
+                    store.userSettings.setAiProvider('ollama');
+                    store.userSettings.save();
+                    setSelectedModel("phi4:14b");
+                  }}
+                >
+                  Ollama
+                </Button>
+                <Button
+                  size="sm"
+                  variant={(snap.userSettings.aiProvider || 'ollama') === 'google-ai-studio' ? "solid" : "outline"}
+                  colorScheme={(snap.userSettings.aiProvider || 'ollama') === 'google-ai-studio' ? "blue" : "gray"}
+                  onClick={() => {
+                    store.userSettings.setAiProvider('google-ai-studio');
+                    store.userSettings.save();
+                    setSelectedModel("gemini-2.0-flash-exp");
+                  }}
+                >
+                  Google AI Studio
+                </Button>
+              </HStack>
+            </Box>
+
             {/* AIモデル選択 */}
             <Box mb={4}>
               <Text fontSize="sm" mb={2}>AIモデル</Text>
-              <Box>
-                {availableModels.map((model) => (
-                  <Box key={model.value} mb={2}>
-                    <Button
-                      size="sm"
-                      variant={selectedModel === model.value && !useCustomModel ? "solid" : "outline"}
-                      colorScheme={selectedModel === model.value && !useCustomModel ? "blue" : "gray"}
-                      onClick={() => {
-                        setSelectedModel(model.value);
-                        setUseCustomModel(false);
-                      }}
-                      width="100%"
-                      textAlign="left"
-                      justifyContent="flex-start"
-                      h="auto"
-                      p={3}
+              
+              {/* Ollamaの場合 */}
+              {(snap.userSettings.aiProvider || 'ollama') === 'ollama' && (
+                <Box>
+                  {availableOllamaModels.map((model) => (
+                    <Box key={model.value} mb={2}>
+                      <Button
+                        size="sm"
+                        variant={selectedModel === model.value && !useCustomModel ? "solid" : "outline"}
+                        colorScheme={selectedModel === model.value && !useCustomModel ? "blue" : "gray"}
+                        onClick={() => {
+                          setSelectedModel(model.value);
+                          setUseCustomModel(false);
+                        }}
+                        width="100%"
+                        textAlign="left"
+                        justifyContent="flex-start"
+                        h="auto"
+                        p={3}
+                      >
+                        <Box>
+                          <Text fontSize="sm" fontWeight="bold">{model.label}</Text>
+                          <Text fontSize="xs" color={selectedModel === model.value && !useCustomModel ? "blue.100" : "gray.500"}>
+                            {model.description}
+                          </Text>
+                        </Box>
+                      </Button>
+                    </Box>
+                  ))}
+                  
+                  {/* カスタムモデル入力 */}
+                  <Box mt={3} p={3} border="1px solid" borderColor={useCustomModel ? "blue.300" : "gray.200"} borderRadius="md" bg={useCustomModel ? "blue.50" : "transparent"}>
+                    <Checkbox
+                      checked={useCustomModel}
+                      onCheckedChange={(details) => setUseCustomModel(details.checked === true)}
+                      mb={2}
                     >
-                      <Box>
-                        <Text fontSize="sm" fontWeight="bold">{model.label}</Text>
-                        <Text fontSize="xs" color={selectedModel === model.value && !useCustomModel ? "blue.100" : "gray.500"}>
-                          {model.description}
+                      <Text fontSize="sm" fontWeight="bold">カスタムモデル</Text>
+                    </Checkbox>
+                    
+                    {useCustomModel && (
+                      <Box mt={2}>
+                        <Input
+                          placeholder="例: llama3.2:7b, gemma2:9b, など"
+                          value={customModel}
+                          onChange={(e) => setCustomModel(e.target.value)}
+                          size="sm"
+                        />
+                        <Text fontSize="xs" color="gray.500" mt={1}>
+                          Ollamaで利用可能な任意のモデル名を入力してください
                         </Text>
                       </Box>
-                    </Button>
+                    )}
                   </Box>
-                ))}
-                
-                {/* カスタムモデル入力 */}
-                <Box mt={3} p={3} border="1px solid" borderColor={useCustomModel ? "blue.300" : "gray.200"} borderRadius="md" bg={useCustomModel ? "blue.50" : "transparent"}>
-                  <Checkbox
-                    checked={useCustomModel}
-                    onCheckedChange={(details) => setUseCustomModel(details.checked === true)}
-                    mb={2}
-                  >
-                    <Text fontSize="sm" fontWeight="bold">カスタムモデル</Text>
-                  </Checkbox>
                   
-                  {useCustomModel && (
-                    <Box mt={2}>
-                      <Input
-                        placeholder="例: llama3.2:7b, gemma2:9b, など"
-                        value={customModel}
-                        onChange={(e) => setCustomModel(e.target.value)}
-                        size="sm"
-                      />
-                      <Text fontSize="xs" color="gray.500" mt={1}>
-                        Ollamaで利用可能な任意のモデル名を入力してください
-                      </Text>
-                    </Box>
+                  <Text fontSize="xs" color="gray.500" mt={2}>
+                    選択したモデルが初回使用時に自動でダウンロードされます
+                  </Text>
+                  {useCustomModel && customModel.trim() && (
+                    <Text fontSize="xs" color="blue.600" mt={1}>
+                      使用予定モデル: {customModel.trim()}
+                    </Text>
                   )}
                 </Box>
-              </Box>
-              <Text fontSize="xs" color="gray.500" mt={2}>
-                選択したモデルが初回使用時に自動でダウンロードされます
-              </Text>
-              {useCustomModel && customModel.trim() && (
-                <Text fontSize="xs" color="blue.600" mt={1}>
-                  使用予定モデル: {customModel.trim()}
-                </Text>
+              )}
+
+              {/* Google AI Studioの場合 */}
+              {(snap.userSettings.aiProvider || 'ollama') === 'google-ai-studio' && (
+                <Box>
+                  {/* APIキー設定 */}
+                  <Box mb={3} p={3} border="1px solid" borderColor="blue.200" borderRadius="md" bg="blue.50">
+                    <Text fontSize="sm" fontWeight="bold" mb={2}>APIキー設定</Text>
+                    <Input
+                      type="password"
+                      placeholder="Google AI Studio APIキーを入力"
+                      value={googleAiApiKey}
+                      onChange={(e) => {
+                        setGoogleAiApiKey(e.target.value);
+                        store.userSettings.setGoogleAiApiKey(e.target.value);
+                        store.userSettings.save();
+                      }}
+                      size="sm"
+                    />
+                    <Text fontSize="xs" color="gray.600" mt={1}>
+                      Google AI StudioでAPIキーを取得してください
+                    </Text>
+                  </Box>
+
+                  {availableGoogleModels.map((model) => (
+                    <Box key={model.value} mb={2}>
+                      <Button
+                        size="sm"
+                        variant={selectedModel === model.value ? "solid" : "outline"}
+                        colorScheme={selectedModel === model.value ? "blue" : "gray"}
+                        onClick={() => setSelectedModel(model.value)}
+                        width="100%"
+                        textAlign="left"
+                        justifyContent="flex-start"
+                        h="auto"
+                        p={3}
+                      >
+                        <Box>
+                          <Text fontSize="sm" fontWeight="bold">{model.label}</Text>
+                          <Text fontSize="xs" color={selectedModel === model.value ? "blue.100" : "gray.500"}>
+                            {model.description}
+                          </Text>
+                        </Box>
+                      </Button>
+                    </Box>
+                  ))}
+                  
+                  <Text fontSize="xs" color="gray.500" mt={2}>
+                    使用予定モデル: {selectedModel}
+                  </Text>
+                </Box>
               )}
             </Box>
             
@@ -1271,7 +1422,7 @@ IMPORTANT: Output ONLY the JSON object, no markdown formatting, no code blocks, 
           </Button>
           <Button 
             onClick={handleConfirmNewChartGeneration}
-            disabled={vramGb !== null && vramGb <= 7}
+            disabled={(snap.userSettings.aiProvider || 'ollama') === 'ollama' && vramGb !== null && vramGb <= 7}
           >
             OK
           </Button>
