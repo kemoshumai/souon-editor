@@ -48,9 +48,9 @@ const GenerateNewChartDialog = forwardRef<GenerateNewChartDialogRef>((_props, re
 
   // 利用可能なGoogle AI Studioモデルのリスト
   const availableGoogleModels = [
-    { value: "gemini-2.0-flash-exp", label: "Gemini 2.0 Flash (推奨)", description: "最新の高性能モデル" },
-    { value: "gemini-1.5-pro", label: "Gemini 1.5 Pro", description: "バランスの良い高性能モデル" },
-    { value: "gemini-1.5-flash", label: "Gemini 1.5 Flash", description: "高速で軽量" },
+    { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro (推奨)", description: "ほぼ人間" },
+    { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash", description: "バランスの良い高性能モデル" },
+    { value: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite", description: "まぁ、うん、軽いけど..." },
   ];
 
   // 実際に使用するモデル名を取得する関数

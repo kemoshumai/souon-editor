@@ -89,8 +89,7 @@ pub async fn call_google_ai(model_name: &str, query: &str, api_key: &str) -> Res
             .backend(llm::builder::LLMBackend::Google)
             .model(model_name)
             .api_key(api_key)
-            .max_tokens(8000)  // Geminiは長い出力に対応しているので大きく設定
-            .temperature(0.7)
+            .temperature(1.2)
             .stream(false)
             .build()
             .map_err(|e| format!("Failed to build LLM (Google): {}", e))?;
