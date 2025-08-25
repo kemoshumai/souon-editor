@@ -26,6 +26,8 @@ interface ChartTrackMenuProps {
 export default function ChartTrackMenu({ chartUuid }: ChartTrackMenuProps) {
   const snap = useSnapshot(store);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showPasteDialog, setShowPasteDialog] = useState(false);
+  const [clipboardData, setClipboardData] = useState<any>(null);
 
   const chart = snap.project.charts.find(c => c.uuid === chartUuid);
   const chartStore = store.project.charts.find(c => c.uuid === chartUuid);
@@ -98,10 +100,20 @@ export default function ChartTrackMenu({ chartUuid }: ChartTrackMenuProps) {
         return;
       }
       
-      if (!chartStore) return;
-      
+      // クリップボードデータを保存してダイアログを表示
+      setClipboardData(data);
+      setShowPasteDialog(true);
+    } catch (error) {
+      console.error('Failed to read clipboard:', error);
+    }
+  };
+
+  const handleConfirmPaste = () => {
+    if (!clipboardData || !chartStore) return;
+    
+    try {
       // クリップボードからのデータでチャートの内容を置き換え
-      const chartData = data.data;
+      const chartData = clipboardData.data;
       chartStore.label = chartData.label;
       chartStore.laneNumber = chartData.laneNumber;
       
@@ -136,6 +148,8 @@ export default function ChartTrackMenu({ chartUuid }: ChartTrackMenuProps) {
       });
       
       console.log('Chart pasted from clipboard');
+      setShowPasteDialog(false);
+      setClipboardData(null);
     } catch (error) {
       console.error('Failed to paste chart from clipboard:', error);
     }
@@ -181,6 +195,32 @@ export default function ChartTrackMenu({ chartUuid }: ChartTrackMenuProps) {
             </DialogActionTrigger>
             <Button colorScheme="red" onClick={handleDelete}>
               削除
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </DialogRoot>
+
+      <DialogRoot open={showPasteDialog} onOpenChange={(details) => setShowPasteDialog(details.open)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>譜面のペースト</DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            <p>現在の譜面「{chart?.label}」の内容を上書きしますか？</p>
+            <p>クリップボードの譜面: 「{clipboardData?.data?.label || '不明'}」</p>
+            <p style={{ color: 'orange', fontSize: 'small' }}>この操作は取り消せません。</p>
+          </DialogBody>
+          <DialogFooter>
+            <DialogActionTrigger asChild>
+              <Button variant="outline" onClick={() => {
+                setShowPasteDialog(false);
+                setClipboardData(null);
+              }}>
+                キャンセル
+              </Button>
+            </DialogActionTrigger>
+            <Button colorScheme="blue" onClick={handleConfirmPaste}>
+              ペースト
             </Button>
           </DialogFooter>
         </DialogContent>
