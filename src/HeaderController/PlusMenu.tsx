@@ -18,6 +18,7 @@ enum PlusMenuSelection {
   SetMusicFile = "set_music_file",
   AddChart = "add_chart",
   AddTempo = "add_tempo",
+  AddTempoFromPosition = "add_tempo_from_position",
   GenerateStems = "generate_stems",
   GenerateOnsets = "generate_onsets",
   GenerateNewChart = "generate_new_chart"
@@ -66,6 +67,36 @@ export default function PlusMenu() {
   const AddTempo = () => {
     const tempoEvent = TempoEvent.createWithRandomUUID(120, 4, 100);
     store.project.musicTempoList.push(tempoEvent);
+  }
+
+  const AddTempoFromPosition = () => {
+    const currentSeconds = store.project.playingPosition.seconds;
+    
+    if (currentSeconds <= 0) {
+      toaster.create({ 
+        title: "テンポ情報を追加できません", 
+        description: "再生位置が0秒以下です。", 
+        type: "error" 
+      });
+      return;
+    }
+    
+    // 1拍子1小節なので、currentSecondsが1小節分の時間
+    // BPM = 60 / (小節の時間 / 拍数)
+    // 1拍子なので: BPM = 60 / currentSeconds
+    const calculatedBpm = Math.round(60 / currentSeconds);
+    
+    // 1拍子、1小節のテンポ情報を作成
+    const tempoEvent = TempoEvent.createWithRandomUUID(calculatedBpm, 1, 1);
+    
+    // 先頭に追加
+    store.project.musicTempoList.unshift(tempoEvent);
+    
+    toaster.create({ 
+      title: "テンポ情報を追加しました", 
+      description: `BPM ${calculatedBpm}、1拍子、1小節のテンポ情報を先頭に追加しました。`, 
+      type: "success" 
+    });
   }
 
   const GenerateStems = async () => {
@@ -168,6 +199,9 @@ export default function PlusMenu() {
       case PlusMenuSelection.AddTempo:
         AddTempo();
         break;
+      case PlusMenuSelection.AddTempoFromPosition:
+        AddTempoFromPosition();
+        break;
       case PlusMenuSelection.GenerateStems:
         GenerateStems();
         break;
@@ -187,6 +221,7 @@ export default function PlusMenu() {
         <MenuItem value={PlusMenuSelection.SetMusicFile}><MdMusicNote />音楽ファイル読み込み</MenuItem>
         <MenuItem value={PlusMenuSelection.AddChart}><MdAddChart />譜面追加</MenuItem>
         <MenuItem value={PlusMenuSelection.AddTempo}><MdSpeed />テンポ情報追加</MenuItem>
+        <MenuItem value={PlusMenuSelection.AddTempoFromPosition}><MdSpeed />再生位置からテンポ追加</MenuItem>
         <MenuItem value={PlusMenuSelection.GenerateStems}><MdAutoFixHigh />ステムを生成する</MenuItem>
         <MenuItem value={PlusMenuSelection.GenerateOnsets}><MdMusicNote />オンセットを生成する</MenuItem>
         <MenuItem value={PlusMenuSelection.GenerateNewChart}><MdMusicNote />譜面を自動生成する</MenuItem>
