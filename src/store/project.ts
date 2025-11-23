@@ -249,7 +249,14 @@ export default class Project {
       ]
     });
 
+    console.log("[loadFromFile] Selected file path:", path);
+
     if (!path) return;
+
+    await this.loadFromFilePath(path);
+  }
+
+  async loadFromFilePath(path: string) {
 
     const data = await readTextFile(path);
     const json = JSON.parse(data);
