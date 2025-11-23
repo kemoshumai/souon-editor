@@ -23,11 +23,27 @@ fn set_saved(saved: bool, state: State<'_, Mutex<AppState>>) {
 #[tauri::command]
 fn get_preserved_opened_file(state: State<'_, Mutex<AppState>>) -> Option<String> {
     let mut state = state.lock().unwrap();
-    let preserved_opened_file = state.preserved_opened_file.clone();
 
-    state.preserved_opened_file = None;
+    if let OpenAction::OpenFile(preserved_opened_file) = &state.preserved_open_action {
+        let file_path = preserved_opened_file.clone();
+        state.preserved_open_action = OpenAction::None;
+        Some(file_path)
+    } else {
+        None
+    }
+}
 
-    preserved_opened_file
+#[tauri::command]
+fn get_preserved_export_meta(state: State<'_, Mutex<AppState>>) -> Option<Vec<String>> {
+    let mut state = state.lock().unwrap();
+
+    if let OpenAction::ExportMeta(preserved_export_meta) = &state.preserved_open_action {
+        let filepath_list = preserved_export_meta.clone();
+        state.preserved_open_action = OpenAction::None;
+        Some(filepath_list)
+    } else {
+        None
+    }
 }
 
 fn handle_file_associations(app: AppHandle, files: Vec<PathBuf>) {
@@ -41,15 +57,31 @@ fn handle_file_associations(app: AppHandle, files: Vec<PathBuf>) {
         
         let state = app.state::<Mutex<AppState>>();
         let mut state = state.lock().unwrap();
-        state.preserved_opened_file = Some(file_path);
+        state.preserved_open_action = OpenAction::OpenFile(file_path);
     }
+}
+
+fn handle_export_meta(app: AppHandle, files: Vec<PathBuf>) {
+    let scope = app.fs_scope();
+
+    let filepath_list = files
+        .iter()
+        .map(|f| f.to_string_lossy().to_string())
+        .inspect(|f| {
+            scope.allow_file(f).expect("Failed to allow file access");
+        })
+        .collect::<Vec<String>>();
+    
+    let state = app.state::<Mutex<AppState>>();
+    let mut state = state.lock().unwrap();
+    state.preserved_open_action = OpenAction::ExportMeta(filepath_list);
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_log::Builder::new().build())
-        .manage(Mutex::new(AppState { saved: false, preserved_opened_file: None }))
+        .manage(Mutex::new(AppState { saved: false, preserved_open_action: OpenAction::None }))
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 let state = window.try_state::<Mutex<AppState>>().unwrap();
@@ -97,18 +129,28 @@ pub fn run() {
             language_model::is_ollama_installed,
             language_model::get_vram,
             get_preserved_opened_file,
+            get_preserved_export_meta,
         ])
         .setup(|app| {
             {
+                let args: Vec<String> = std::env::args().skip(1).collect();
                 let mut files = Vec::new();
-                for maybe_file in std::env::args().skip(1) {
-                    // フラグ（--helpなど）は除外
-                    if maybe_file.starts_with('-') { continue; }
-                    files.push(PathBuf::from(maybe_file));
+                let mut is_export_meta = false;
+
+                for arg in args.iter() {
+                    if arg == "--export-meta" {
+                        is_export_meta = true;
+                    } else if !arg.starts_with('-') {
+                        files.push(PathBuf::from(arg));
+                    }
                 }
 
                 if !files.is_empty() {
-                    handle_file_associations(app.handle().clone(), files);
+                    if is_export_meta {
+                        handle_export_meta(app.handle().clone(), files);
+                    } else {
+                        handle_file_associations(app.handle().clone(), files);
+                    }
                 }
 
                 Ok(())
@@ -120,5 +162,11 @@ pub fn run() {
 
 struct AppState {
     saved: bool,
-    preserved_opened_file: Option<String>,
+    preserved_open_action: OpenAction
+}
+
+enum OpenAction {
+    None,
+    OpenFile(String),
+    ExportMeta(Vec<String>)
 }
