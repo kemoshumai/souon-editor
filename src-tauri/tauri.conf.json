@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "souon-editor",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "identifier": "com.kemoshumai.souon-editor",
   "build": {
     "beforeDevCommand": "bun run dev",
@@ -27,7 +27,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": "nsis",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -38,15 +38,19 @@
     "fileAssociations": [
       {
         "ext": ["sof"],
-        "name": "総音音声ファイル",
-        "description": "音楽ゲーム用音楽ファイル"
+        "name": "SouonOngakuFile",
+        "description": "Souon Editor Music File",
+        "role": "Editor"
       }
     ],
     "windows": {
       "allowDowngrades": true,
       "certificateThumbprint": null,
       "digestAlgorithm": null,
-      "nsis": null,
+      "nsis": {
+        "languages": ["Japanese","English"],
+        "template": "nsis/installer.nsi"
+      },
       "signCommand": null,
       "timestampUrl": null,
       "tsp": false,
@@ -54,9 +58,7 @@
         "silent": true,
         "type": "downloadBootstrapper"
       },
-      "wix": {
-        "language": ["ja-JP"]
-      }
+      "wix": null
     }
   }
 }
