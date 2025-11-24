@@ -7,6 +7,7 @@ mod python_env;
 mod stem;
 mod audio_labeling;
 mod language_model;
+mod export_meta;
 
 #[tauri::command]
 async fn set_title(window: tauri::Window, title: &str) -> Result<(), tauri::Error> {
@@ -33,19 +34,6 @@ fn get_preserved_opened_file(state: State<'_, Mutex<AppState>>) -> Option<String
     }
 }
 
-#[tauri::command]
-fn get_preserved_export_meta(state: State<'_, Mutex<AppState>>) -> Option<Vec<String>> {
-    let mut state = state.lock().unwrap();
-
-    if let OpenAction::ExportMeta(preserved_export_meta) = &state.preserved_open_action {
-        let filepath_list = preserved_export_meta.clone();
-        state.preserved_open_action = OpenAction::None;
-        Some(filepath_list)
-    } else {
-        None
-    }
-}
-
 fn handle_file_associations(app: AppHandle, files: Vec<PathBuf>) {
     // 最初のファイルのみを処理
     if let Some(first_file) = files.first() {
@@ -61,24 +49,28 @@ fn handle_file_associations(app: AppHandle, files: Vec<PathBuf>) {
     }
 }
 
-fn handle_export_meta(app: AppHandle, files: Vec<PathBuf>) {
-    let scope = app.fs_scope();
-
-    let filepath_list = files
-        .iter()
-        .map(|f| f.to_string_lossy().to_string())
-        .inspect(|f| {
-            scope.allow_file(f).expect("Failed to allow file access");
-        })
-        .collect::<Vec<String>>();
-    
-    let state = app.state::<Mutex<AppState>>();
-    let mut state = state.lock().unwrap();
-    state.preserved_open_action = OpenAction::ExportMeta(filepath_list);
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+
+    // もし--export-metaオプションがあれば、画面は起動せずにメタ情報分離処理を行う
+    {
+        let args: Vec<String> = std::env::args().skip(1).collect();
+        let mut files = Vec::new();
+        let mut is_export_meta = false;
+        for arg in args.iter() {
+            if arg == "--export-meta" {
+                is_export_meta = true;
+            } else if !arg.starts_with('-') {
+                files.push(PathBuf::from(arg));
+            }
+        }
+        if is_export_meta && !files.is_empty() {
+            export_meta::handle_export_meta(files);
+            exit(0);
+        }
+    }
+
+
     tauri::Builder::default()
         .plugin(tauri_plugin_log::Builder::new().build())
         .manage(Mutex::new(AppState { saved: false, preserved_open_action: OpenAction::None }))
@@ -129,28 +121,20 @@ pub fn run() {
             language_model::is_ollama_installed,
             language_model::get_vram,
             get_preserved_opened_file,
-            get_preserved_export_meta,
         ])
         .setup(|app| {
             {
                 let args: Vec<String> = std::env::args().skip(1).collect();
                 let mut files = Vec::new();
-                let mut is_export_meta = false;
 
                 for arg in args.iter() {
-                    if arg == "--export-meta" {
-                        is_export_meta = true;
-                    } else if !arg.starts_with('-') {
+                    if !arg.starts_with('-') {
                         files.push(PathBuf::from(arg));
                     }
                 }
 
                 if !files.is_empty() {
-                    if is_export_meta {
-                        handle_export_meta(app.handle().clone(), files);
-                    } else {
-                        handle_file_associations(app.handle().clone(), files);
-                    }
+                    handle_file_associations(app.handle().clone(), files);
                 }
 
                 Ok(())
@@ -168,5 +152,4 @@ struct AppState {
 enum OpenAction {
     None,
     OpenFile(String),
-    ExportMeta(Vec<String>)
 }
