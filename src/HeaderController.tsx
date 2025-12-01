@@ -8,6 +8,7 @@ import TitleBanner from "./HeaderController/TitleBanner";
 import FileMenu from "./HeaderController/FileMenu";
 import TopOrBottom from "./HeaderController/TopOrBottom";
 import SettingsMenu from "./HeaderController/SettingsMenu";
+import UpdateCheck from "./HeaderController/UpdateCheck";
 
 export default function HeaderController() {
 
@@ -34,6 +35,7 @@ export default function HeaderController() {
           <Text>秒尺：</Text>
           <Text>{snap.project.musicLength}</Text>
         </HStack>
+        <UpdateCheck />
       </HStack>
       <Separator />
     </Stack>
