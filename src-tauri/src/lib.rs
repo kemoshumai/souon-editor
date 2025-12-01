@@ -3,11 +3,11 @@ use tauri::{AppHandle, Manager, State};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_fs::FsExt;
 
+mod audio_labeling;
+mod export_meta;
+mod language_model;
 mod python_env;
 mod stem;
-mod audio_labeling;
-mod language_model;
-mod export_meta;
 
 #[tauri::command]
 async fn set_title(window: tauri::Window, title: &str) -> Result<(), tauri::Error> {
@@ -41,8 +41,10 @@ fn handle_file_associations(app: AppHandle, files: Vec<PathBuf>) {
 
         // filepathにアクセスする権限を与える
         let scope = app.fs_scope();
-        scope.allow_file(&file_path).expect("Failed to allow file access");
-        
+        scope
+            .allow_file(&file_path)
+            .expect("Failed to allow file access");
+
         let state = app.state::<Mutex<AppState>>();
         let mut state = state.lock().unwrap();
         state.preserved_open_action = OpenAction::OpenFile(file_path);
@@ -51,7 +53,6 @@ fn handle_file_associations(app: AppHandle, files: Vec<PathBuf>) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-
     // もし--export-metaオプションがあれば、画面は起動せずにメタ情報分離処理を行う
     {
         let args: Vec<String> = std::env::args().skip(1).collect();
@@ -70,10 +71,13 @@ pub fn run() {
         }
     }
 
-
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_log::Builder::new().build())
-        .manage(Mutex::new(AppState { saved: false, preserved_open_action: OpenAction::None }))
+        .manage(Mutex::new(AppState {
+            saved: false,
+            preserved_open_action: OpenAction::None,
+        }))
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 let state = window.try_state::<Mutex<AppState>>().unwrap();
@@ -107,7 +111,7 @@ pub fn run() {
                 .target(tauri_plugin_log::Target::new(
                     tauri_plugin_log::TargetKind::Webview,
                 ))
-                .build()
+                .build(),
         )
         .invoke_handler(tauri::generate_handler![
             set_title,
@@ -123,22 +127,20 @@ pub fn run() {
             get_preserved_opened_file,
         ])
         .setup(|app| {
-            {
-                let args: Vec<String> = std::env::args().skip(1).collect();
-                let mut files = Vec::new();
+            let args: Vec<String> = std::env::args().skip(1).collect();
+            let mut files = Vec::new();
 
-                for arg in args.iter() {
-                    if !arg.starts_with('-') {
-                        files.push(PathBuf::from(arg));
-                    }
+            for arg in args.iter() {
+                if !arg.starts_with('-') {
+                    files.push(PathBuf::from(arg));
                 }
-
-                if !files.is_empty() {
-                    handle_file_associations(app.handle().clone(), files);
-                }
-
-                Ok(())
             }
+
+            if !files.is_empty() {
+                handle_file_associations(app.handle().clone(), files);
+            }
+
+            Ok(())
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -146,7 +148,7 @@ pub fn run() {
 
 struct AppState {
     saved: bool,
-    preserved_open_action: OpenAction
+    preserved_open_action: OpenAction,
 }
 
 enum OpenAction {

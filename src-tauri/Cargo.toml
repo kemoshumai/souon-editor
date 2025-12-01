@@ -44,3 +44,6 @@ codegen-units = 1 # 最適化の効率を向上
 lto = true        # リンク時の最適化を有効化
 opt-level = "z"   # サイズを最優先で最適化
 strip = true      # デバッグシンボルを削除
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-updater = "2"

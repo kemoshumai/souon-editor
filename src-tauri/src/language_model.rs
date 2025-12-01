@@ -13,26 +13,20 @@ pub async fn call_llm(model_name: &str, query: &str) -> Result<String, String> {
             .backend(llm::builder::LLMBackend::Ollama)
             .base_url(base_url)
             .model(model_name)
-            .max_tokens(4000)  // 譜面生成に十分な長さに設定
+            .max_tokens(4000) // 譜面生成に十分な長さに設定
             .temperature(0.7)
             .stream(false)
             .build()
             .expect("Failed to build LLM (Ollama)");
 
-        let messages = vec![
-            ChatMessage::user()
-                .content(query)
-                .build(),
-        ];
+        let messages = vec![ChatMessage::user().content(query).build()];
 
         match llm.chat(&messages).await {
             Ok(response) => {
                 let text = response.text().unwrap_or_default().to_string();
                 Ok(text)
-            },
-            Err(err) => {
-                Err(format!("LLM request failed: {}", err))
             }
+            Err(err) => Err(format!("LLM request failed: {}", err)),
         }
     }
 
@@ -52,9 +46,7 @@ pub async fn call_llm(model_name: &str, query: &str) -> Result<String, String> {
                     command.creation_flags(CREATE_NO_WINDOW);
                 }
 
-                let output = command
-                    .output()
-                    .expect("Failed to execute ollama pull");
+                let output = command.output().expect("Failed to execute ollama pull");
 
                 log::info!(
                     "Ollama pull output: {}",
@@ -72,7 +64,7 @@ pub async fn call_llm(model_name: &str, query: &str) -> Result<String, String> {
                 // モデルのダウンロード後に再度リクエストを試行
                 match make_llm_request(model_name, query).await {
                     Ok(text) => Ok(text),
-                    Err(e) => Err(format!("Failed to get response from LLM after pull: {}", e))
+                    Err(e) => Err(format!("Failed to get response from LLM after pull: {}", e)),
                 }
             } else {
                 Err(err_msg)
@@ -82,9 +74,17 @@ pub async fn call_llm(model_name: &str, query: &str) -> Result<String, String> {
 }
 
 #[tauri::command]
-pub async fn call_google_ai(model_name: &str, query: &str, api_key: &str) -> Result<String, String> {
+pub async fn call_google_ai(
+    model_name: &str,
+    query: &str,
+    api_key: &str,
+) -> Result<String, String> {
     // ヘルパー関数を定義してSendの問題を回避
-    async fn make_google_ai_request(model_name: &str, query: &str, api_key: &str) -> Result<String, String> {
+    async fn make_google_ai_request(
+        model_name: &str,
+        query: &str,
+        api_key: &str,
+    ) -> Result<String, String> {
         let llm = LLMBuilder::new()
             .backend(llm::builder::LLMBackend::Google)
             .model(model_name)
@@ -94,20 +94,14 @@ pub async fn call_google_ai(model_name: &str, query: &str, api_key: &str) -> Res
             .build()
             .map_err(|e| format!("Failed to build LLM (Google): {}", e))?;
 
-        let messages = vec![
-            ChatMessage::user()
-                .content(query)
-                .build(),
-        ];
+        let messages = vec![ChatMessage::user().content(query).build()];
 
         match llm.chat(&messages).await {
             Ok(response) => {
                 let text = response.text().unwrap_or_default().to_string();
                 Ok(text)
-            },
-            Err(err) => {
-                Err(format!("Google AI Studio request failed: {}", err))
             }
+            Err(err) => Err(format!("Google AI Studio request failed: {}", err)),
         }
     }
 
@@ -126,9 +120,7 @@ pub async fn is_ollama_installed() -> Result<bool, String> {
     }
 
     match command.output() {
-        Ok(output) => {
-            Ok(output.status.success())
-        },
+        Ok(output) => Ok(output.status.success()),
         Err(_) => {
             // コマンドが見つからない場合はfalseを返す
             Ok(false)
@@ -149,7 +141,9 @@ pub async fn get_vram() -> Result<f32, String> {
 
 async fn get_vram_from_nvidia_smi() -> Result<f32, String> {
     let mut nvidia_command = std::process::Command::new("nvidia-smi");
-    nvidia_command.arg("--query-gpu=memory.total").arg("--format=csv,noheader,nounits");
+    nvidia_command
+        .arg("--query-gpu=memory.total")
+        .arg("--format=csv,noheader,nounits");
 
     #[cfg(target_os = "windows")]
     {
@@ -161,7 +155,7 @@ async fn get_vram_from_nvidia_smi() -> Result<f32, String> {
         if nvidia_output.status.success() {
             let vram_str = String::from_utf8_lossy(&nvidia_output.stdout);
             let mut max_vram = 0.0f32;
-            
+
             // 複数行の出力を処理（複数GPUの場合）
             for line in vram_str.lines() {
                 if let Ok(vram_mb) = line.trim().parse::<f32>() {
@@ -171,13 +165,13 @@ async fn get_vram_from_nvidia_smi() -> Result<f32, String> {
                     }
                 }
             }
-            
+
             if max_vram > 0.0 {
                 return Ok(max_vram);
             }
         }
     }
-    
+
     Err("Failed to get VRAM from nvidia-smi".to_string())
 }
 
@@ -238,9 +232,12 @@ async fn get_vram_from_dxdiag() -> Result<f32, String> {
                     Err("Failed to parse VRAM value from dxdiag".into())
                 }
             } else {
-                Err(format!("dxdiag error: {}", String::from_utf8_lossy(&output.stderr)))
+                Err(format!(
+                    "dxdiag error: {}",
+                    String::from_utf8_lossy(&output.stderr)
+                ))
             }
-        },
+        }
         Err(e) => Err(format!("Failed to execute dxdiag: {}", e)),
     }
 }

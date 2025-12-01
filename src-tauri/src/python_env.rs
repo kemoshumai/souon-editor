@@ -4,59 +4,70 @@ use tauri::Manager;
 // Python環境をダウンロードして展開する関数
 pub async fn download_and_extract_python(local_python_dir: &std::path::Path) -> Result<(), String> {
     log::info!("Downloading Python environment from URL...");
-    
-    const PYTHON_URL: &str = "https://www.python.org/ftp/python/3.13.6/python-3.13.6-embed-amd64.zip";
-    
+
+    const PYTHON_URL: &str =
+        "https://www.python.org/ftp/python/3.13.6/python-3.13.6-embed-amd64.zip";
+
     // 一時ファイルのパスを生成
-    let temp_zip_path = local_python_dir.parent()
+    let temp_zip_path = local_python_dir
+        .parent()
         .ok_or("Failed to get parent directory")?
         .join("python_temp.zip");
-    
+
     // AppLocalDataディレクトリが存在しない場合は作成
     if let Some(parent) = local_python_dir.parent() {
-        tokio::fs::create_dir_all(parent).await
+        tokio::fs::create_dir_all(parent)
+            .await
             .map_err(|e| format!("Failed to create AppLocalData directory: {}", e))?;
     }
-    
+
     // Pythonのzipファイルをダウンロード
     log::info!("Downloading Python from: {}", PYTHON_URL);
-    let response = reqwest::get(PYTHON_URL).await
+    let response = reqwest::get(PYTHON_URL)
+        .await
         .map_err(|e| format!("Failed to download Python: {}", e))?;
-    
+
     if !response.status().is_success() {
-        return Err(format!("Failed to download Python: HTTP {}", response.status()));
+        return Err(format!(
+            "Failed to download Python: HTTP {}",
+            response.status()
+        ));
     }
-    
-    let content = response.bytes().await
+
+    let content = response
+        .bytes()
+        .await
         .map_err(|e| format!("Failed to read download content: {}", e))?;
-    
+
     // 一時ファイルに保存
     log::info!("Saving downloaded file to: {}", temp_zip_path.display());
-    tokio::fs::write(&temp_zip_path, &content).await
+    tokio::fs::write(&temp_zip_path, &content)
+        .await
         .map_err(|e| format!("Failed to write to temporary file: {}", e))?;
-    
+
     // zipファイルを展開
     log::info!("Extracting Python to: {}", local_python_dir.display());
     let temp_zip_path_clone = temp_zip_path.clone();
     let local_python_dir_clone = local_python_dir.to_path_buf();
-    
+
     tokio::task::spawn_blocking(move || {
         let file = std::fs::File::open(&temp_zip_path_clone)
             .map_err(|e| format!("Failed to open zip file: {}", e))?;
-        let mut archive = zip::ZipArchive::new(file)
-            .map_err(|e| format!("Failed to read zip archive: {}", e))?;
-        
+        let mut archive =
+            zip::ZipArchive::new(file).map_err(|e| format!("Failed to read zip archive: {}", e))?;
+
         std::fs::create_dir_all(&local_python_dir_clone)
             .map_err(|e| format!("Failed to create Python directory: {}", e))?;
-        
+
         for i in 0..archive.len() {
-            let mut file = archive.by_index(i)
+            let mut file = archive
+                .by_index(i)
                 .map_err(|e| format!("Failed to read file from archive: {}", e))?;
             let outpath = match file.enclosed_name() {
                 Some(path) => local_python_dir_clone.join(path),
                 None => continue,
             };
-            
+
             if file.name().ends_with('/') {
                 std::fs::create_dir_all(&outpath)
                     .map_err(|e| format!("Failed to create directory: {}", e))?;
@@ -74,15 +85,16 @@ pub async fn download_and_extract_python(local_python_dir: &std::path::Path) -> 
             }
         }
         Ok::<(), String>(())
-    }).await.map_err(|e| format!("Task join error: {}", e))??;
-    
+    })
+    .await
+    .map_err(|e| format!("Task join error: {}", e))??;
+
     // 一時ファイルを削除
     let _ = tokio::fs::remove_file(&temp_zip_path).await;
-    
+
     log::info!("Python environment downloaded and extracted successfully");
     Ok(())
 }
-
 
 #[tauri::command]
 pub async fn check_python(app_handle: tauri::AppHandle) -> Result<String, String> {
@@ -97,8 +109,6 @@ pub async fn check_python(app_handle: tauri::AppHandle) -> Result<String, String
         )
         .expect("Failed to resolve local Python executable path");
 
-
-
     // AppLocalDataにPython環境が存在しない場合、URLからダウンロード
     if !local_python_path.exists() {
         log::info!("Local Python environment not found, downloading from URL...");
@@ -109,7 +119,8 @@ pub async fn check_python(app_handle: tauri::AppHandle) -> Result<String, String
             .expect("Failed to resolve local Python directory path");
 
         // Python環境をダウンロードして展開
-        download_and_extract_python(&local_python_dir).await
+        download_and_extract_python(&local_python_dir)
+            .await
             .map_err(|e| format!("Failed to download and extract Python environment: {}", e))?;
 
         log::info!(
@@ -150,20 +161,27 @@ pub async fn check_python(app_handle: tauri::AppHandle) -> Result<String, String
         if !python_script.exists() {
             log::info!("get-pip.py not found, downloading...");
             const GET_PIP_URL: &str = "https://bootstrap.pypa.io/get-pip.py";
-            
-            let response = reqwest::get(GET_PIP_URL).await
+
+            let response = reqwest::get(GET_PIP_URL)
+                .await
                 .map_err(|e| format!("Failed to download get-pip.py: {}", e))?;
-            
+
             if !response.status().is_success() {
-                return Err(format!("Failed to download get-pip.py: HTTP {}", response.status()));
+                return Err(format!(
+                    "Failed to download get-pip.py: HTTP {}",
+                    response.status()
+                ));
             }
-            
-            let content = response.text().await
+
+            let content = response
+                .text()
+                .await
                 .map_err(|e| format!("Failed to read get-pip.py content: {}", e))?;
-            
-            tokio::fs::write(&python_script, content).await
+
+            tokio::fs::write(&python_script, content)
+                .await
                 .map_err(|e| format!("Failed to save get-pip.py: {}", e))?;
-            
+
             log::info!("get-pip.py downloaded successfully");
         }
 
@@ -176,18 +194,25 @@ pub async fn check_python(app_handle: tauri::AppHandle) -> Result<String, String
             )
             .expect("Failed to resolve python313._pth path");
 
-        log::info!("Checking python313._pth file at: {}", pth_file_path.display());
-        
+        log::info!(
+            "Checking python313._pth file at: {}",
+            pth_file_path.display()
+        );
+
         if pth_file_path.exists() {
             // python313._pthの内容を標準的な形式に設定
             let correct_pth_content = "python313.zip\n.\nimport site";
-            
+
             log::info!("Setting python313._pth to standard format");
-            tokio::fs::write(&pth_file_path, correct_pth_content).await
+            tokio::fs::write(&pth_file_path, correct_pth_content)
+                .await
                 .map_err(|e| format!("Failed to update python313._pth: {}", e))?;
             log::info!("Successfully updated python313._pth with standard content");
         } else {
-            log::warn!("python313._pth file not found at: {}", pth_file_path.display());
+            log::warn!(
+                "python313._pth file not found at: {}",
+                pth_file_path.display()
+            );
         }
 
         log::info!("get-pip.py path: {}", python_script.to_string_lossy());

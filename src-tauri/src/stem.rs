@@ -74,7 +74,7 @@ pub async fn demucs(
     let mut entries = tokio::fs::read_dir(&output_dir)
         .await
         .map_err(|e| format!("Failed to read demucs_output directory: {}", e))?;
-        
+
     while let Some(entry) = entries
         .next_entry()
         .await
@@ -173,7 +173,9 @@ pub fn convert_to_vorbis(wav_path: &std::path::Path) -> String {
     let spec = wav_reader.spec();
     log::info!(
         "WAV spec: channels={}, sample_rate={}, bits_per_sample={}",
-        spec.channels, spec.sample_rate, spec.bits_per_sample
+        spec.channels,
+        spec.sample_rate,
+        spec.bits_per_sample
     );
 
     // サンプルデータを読み取り
@@ -233,7 +235,10 @@ pub fn convert_to_vorbis(wav_path: &std::path::Path) -> String {
     general_purpose::STANDARD.encode(&output_data)
 }
 
-pub async fn search_wav_files(dir: &std::path::Path, output_files: &mut Vec<String>) -> Result<(), String> {
+pub async fn search_wav_files(
+    dir: &std::path::Path,
+    output_files: &mut Vec<String>,
+) -> Result<(), String> {
     search_wav_files_impl(dir, output_files).await
 }
 
@@ -245,7 +250,7 @@ fn search_wav_files_impl<'a>(
         let mut entries = tokio::fs::read_dir(dir)
             .await
             .map_err(|e| format!("Failed to read directory {}: {}", dir.display(), e))?;
-            
+
         while let Some(entry) = entries
             .next_entry()
             .await
