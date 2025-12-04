@@ -19,6 +19,7 @@ struct ChartMeta {
     #[serde(rename = "laneNumber")]
     lane_number: i32,
     label: String,
+    level: i32,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -50,6 +51,7 @@ pub fn extract_meta_from_sof(sof_content: &str) -> Result<String, Box<dyn std::e
             uuid: chart["uuid"].as_str().unwrap_or("").to_string(),
             lane_number: chart["laneNumber"].as_i64().unwrap_or(0) as i32,
             label: chart["label"].as_str().unwrap_or("").to_string(),
+            level: chart["level"].as_i64().unwrap_or(1) as i32,
         })
         .collect();
 

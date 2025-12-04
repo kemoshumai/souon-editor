@@ -923,7 +923,8 @@ IMPORTANT: Output ONLY the JSON object, no markdown formatting, no code blocks, 
         crypto.randomUUID(),
         chartEvents,
         keyCount, // laneNumber として鍵盤数を設定
-        `自動生成${new Date().toLocaleString('ja-JP')}`
+        `自動生成${new Date().toLocaleString('ja-JP')}`,
+        1 // デフォルト難易度
       );
       
       // storeのprojectのchartsに追加

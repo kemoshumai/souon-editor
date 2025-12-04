@@ -208,7 +208,13 @@ export default class Project {
       musicLength: this.musicLength,
       zoomScale: this.zoomScale,
       playingPosition: this.playingPosition.getSerialized(),
-      charts: this.charts,
+      charts: this.charts.map(c => ({
+        uuid: c.uuid,
+        label: c.label,
+        laneNumber: c.laneNumber,
+        level: c.level,
+        events: c.events
+      })),
       musicTempoList: this.musicTempoList,
       stems: this.stems,
       stemNotes: this.stemNotes
@@ -279,7 +285,7 @@ export default class Project {
         return new SpeedChangeEvent(e.uuid, TemporalPosition.fromJSON(e.position), e.speed);
       }
       throw new Error("Invalid ChartEventType");
-    }), c.laneNumber, c.label));// クラスに戻す
+    }), c.laneNumber, c.label, c.level ?? 1));// クラスに戻す（levelがない場合はデフォルト1）
     this.musicTempoList = json.musicTempoList.map((t: any) => new TempoEvent(t.uuid, t.tempo, t.beat, t.length));// クラスに戻す
 
     // ステム情報を復元
