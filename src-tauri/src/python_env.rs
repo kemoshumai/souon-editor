@@ -414,3 +414,120 @@ pub async fn check_demucs(app_handle: tauri::AppHandle) -> Result<String, String
     // demucs.exeの絶対パスを返す
     Ok(demucs_path.to_string_lossy().to_string())
 }
+
+#[tauri::command]
+pub async fn check_ffmpeg(app_handle: tauri::AppHandle) -> Result<String, String> {
+    log::info!("Checking FFmpeg environment...");
+
+    // ffmpegのパスを取得（AppLocalDataのpython_env/Scripts/ffmpeg.exe）
+    let ffmpeg_path = app_handle
+        .path()
+        .resolve(
+            "python_env/Scripts/ffmpeg.exe",
+            tauri::path::BaseDirectory::AppLocalData,
+        )
+        .expect("Failed to resolve ffmpeg executable path");
+
+    log::info!("FFmpeg executable path: {}", ffmpeg_path.to_string_lossy());
+    log::info!("FFmpeg executable exists: {}", ffmpeg_path.exists());
+
+    // ffmpegが存在しない場合インストール
+    if !ffmpeg_path.exists() {
+        log::info!("FFmpeg not found, downloading...");
+
+        const FFMPEG_URL: &str = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip";
+
+        // 一時ファイルのパスを生成
+        let local_python_dir = app_handle
+            .path()
+            .resolve("python_env", tauri::path::BaseDirectory::AppLocalData)
+            .expect("Failed to resolve local Python directory path");
+
+        let temp_zip_path = local_python_dir
+            .parent()
+            .ok_or("Failed to get parent directory")?
+            .join("ffmpeg_temp.zip");
+
+        // FFmpegのzipファイルをダウンロード
+        log::info!("Downloading FFmpeg from: {}", FFMPEG_URL);
+        let response = reqwest::get(FFMPEG_URL)
+            .await
+            .map_err(|e| format!("Failed to download FFmpeg: {}", e))?;
+
+        if !response.status().is_success() {
+            return Err(format!(
+                "Failed to download FFmpeg: HTTP {}",
+                response.status()
+            ));
+        }
+
+        let content = response
+            .bytes()
+            .await
+            .map_err(|e| format!("Failed to read download content: {}", e))?;
+
+        // 一時ファイルに保存
+        log::info!("Saving downloaded file to: {}", temp_zip_path.display());
+        tokio::fs::write(&temp_zip_path, &content)
+            .await
+            .map_err(|e| format!("Failed to write to temporary file: {}", e))?;
+
+        // zipファイルを展開してbin/ffmpeg.exeをScriptsにコピー
+        log::info!("Extracting FFmpeg...");
+        let temp_zip_path_clone = temp_zip_path.clone();
+        let ffmpeg_path_clone = ffmpeg_path.clone();
+
+        tokio::task::spawn_blocking(move || {
+            let file = std::fs::File::open(&temp_zip_path_clone)
+                .map_err(|e| format!("Failed to open zip file: {}", e))?;
+            let mut archive = zip::ZipArchive::new(file)
+                .map_err(|e| format!("Failed to read zip archive: {}", e))?;
+
+            // Scripts ディレクトリが存在しない場合は作成
+            if let Some(scripts_dir) = ffmpeg_path_clone.parent() {
+                std::fs::create_dir_all(scripts_dir)
+                    .map_err(|e| format!("Failed to create Scripts directory: {}", e))?;
+            }
+
+            // bin/ffmpeg.exeを探してScriptsにコピー
+            let mut ffmpeg_found = false;
+            for i in 0..archive.len() {
+                let mut file = archive
+                    .by_index(i)
+                    .map_err(|e| format!("Failed to read file from archive: {}", e))?;
+                
+                if let Some(name) = file.enclosed_name() {
+                    let name_str = name.to_string_lossy();
+                    // bin/ffmpeg.exeまたはbin\ffmpeg.exeを探す
+                    if name_str.contains("bin") && name_str.ends_with("ffmpeg.exe") {
+                        log::info!("Found ffmpeg.exe in archive: {}", name_str);
+                        let mut outfile = std::fs::File::create(&ffmpeg_path_clone)
+                            .map_err(|e| format!("Failed to create ffmpeg.exe: {}", e))?;
+                        std::io::copy(&mut file, &mut outfile)
+                            .map_err(|e| format!("Failed to extract ffmpeg.exe: {}", e))?;
+                        ffmpeg_found = true;
+                        break;
+                    }
+                }
+            }
+
+            if !ffmpeg_found {
+                return Err("ffmpeg.exe not found in the downloaded archive".to_string());
+            }
+
+            Ok::<(), String>(())
+        })
+        .await
+        .map_err(|e| format!("Task join error: {}", e))??;
+
+        // 一時ファイルを削除
+        let _ = tokio::fs::remove_file(&temp_zip_path).await;
+
+        log::info!("FFmpeg downloaded and installed successfully");
+    }
+
+    log::info!("FFmpeg is ready at: {}", ffmpeg_path.to_string_lossy());
+
+    // ffmpeg.exeの絶対パスを返す
+    Ok(ffmpeg_path.to_string_lossy().to_string())
+}

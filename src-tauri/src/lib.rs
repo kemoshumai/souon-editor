@@ -119,6 +119,7 @@ pub fn run() {
             set_saved,
             python_env::check_python,
             python_env::check_demucs,
+            python_env::check_ffmpeg,
             stem::demucs,
             audio_labeling::onset,
             language_model::call_llm,

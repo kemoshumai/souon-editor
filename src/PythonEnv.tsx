@@ -21,6 +21,10 @@ export default function PythonEnv() {
 
     await invoke("check_demucs");
 
+    store.splashScreenStack.push("FFmpegを設定しています。");
+
+    await invoke("check_ffmpeg");
+
     store.splashScreenStack.push("セットアップが完了しました。");
 
     store.isPythonEnvReady = true;
