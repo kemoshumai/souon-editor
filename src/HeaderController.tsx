@@ -9,6 +9,7 @@ import FileMenu from "./HeaderController/FileMenu";
 import TopOrBottom from "./HeaderController/TopOrBottom";
 import SettingsMenu from "./HeaderController/SettingsMenu";
 import UpdateCheck from "./HeaderController/UpdateCheck";
+import ToyMenu from "./HeaderController/ToyMenu";
 
 export default function HeaderController() {
 
@@ -25,6 +26,7 @@ export default function HeaderController() {
         <Button w="10" h="10" onClick={_=>store.playing = !snap.playing}>{ snap.playing ? <PiPause /> :<PiPlay /> }</Button>
         <TopOrBottom />
         <SettingsMenu />
+        <ToyMenu />
         <Input
           w={300}
           value={inputName}
