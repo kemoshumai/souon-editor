@@ -19,6 +19,7 @@ interface Store {
     vocals: boolean;
   };
   moca: boolean;
+  rouletteWindow: boolean;
 }
 
 const store = proxy<Store>({
@@ -37,7 +38,8 @@ const store = proxy<Store>({
     other: false,
     vocals: false
   },
-  moca: false
+  moca: false,
+  rouletteWindow: false
 });
 
 (async () => {

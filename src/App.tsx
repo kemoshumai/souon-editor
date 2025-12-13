@@ -9,6 +9,7 @@ import SplashScreen from './SplashScreen';
 import PythonEnv from './PythonEnv';
 import Moca from './Moca';
 import store from './store/store';
+import RouletteWindow from './HeaderController/ToyMenu/RouletteWindow';
 import { invoke } from '@tauri-apps/api/core';
 import { useAsync } from 'react-use';
 import { useSnapshot } from 'valtio';
@@ -58,6 +59,7 @@ function App() {
       <PythonEnv />
       <SplashScreen />
       <Moca />
+      {snap.rouletteWindow && <RouletteWindow onClose={() => store.rouletteWindow = false} />}
     </Theme>
   </>);
 }

@@ -133,6 +133,7 @@ export default function SequentialEditor() {
     <>
       <Background />
       <Bleed flex={1} overflowX={"scroll"} overflowY={"scroll"} ref={scrollable} position={"relative"} background={"transparent"} onWheel={onWheel} >
+        <PlayingBarContainer />
         <HStack minH={"100%"} >
           <DndContext
             sensors={sensors}
@@ -152,7 +153,6 @@ export default function SequentialEditor() {
             </SortableContext>
           </DndContext>
         </HStack>
-        <PlayingBarContainer />
       </Bleed>
     </>
   );

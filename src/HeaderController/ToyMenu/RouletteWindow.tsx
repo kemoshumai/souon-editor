@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { Box, Button, Input, VStack, HStack, Text, IconButton } from "@chakra-ui/react";
-import { CloseButton } from "../../components/ui/close-button";
+import DraggableWindow from "../../components/DraggableWindow";
 
 interface RouletteItem {
   id: number;
@@ -12,9 +12,6 @@ interface RouletteWindowProps {
 }
 
 export default function RouletteWindow({ onClose }: RouletteWindowProps) {
-  const [position, setPosition] = useState({ x: 100, y: 100 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [items, setItems] = useState<RouletteItem[]>([
     { id: 1, text: "オプション1" },
     { id: 2, text: "オプション2" },
@@ -24,40 +21,6 @@ export default function RouletteWindow({ onClose }: RouletteWindowProps) {
   const [isSpinning, setIsSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [result, setResult] = useState<string | null>(null);
-  const windowRef = useRef<HTMLDivElement>(null);
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest(".no-drag")) return;
-    e.preventDefault();
-    setIsDragging(true);
-    setDragOffset({
-      x: e.clientX - position.x,
-      y: e.clientY - position.y,
-    });
-  };
-
-  const handleMouseMove = (e: MouseEvent) => {
-    if (!isDragging) return;
-    setPosition({
-      x: e.clientX - dragOffset.x,
-      y: e.clientY - dragOffset.y,
-    });
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  useEffect(() => {
-    if (isDragging) {
-      window.addEventListener("mousemove", handleMouseMove);
-      window.addEventListener("mouseup", handleMouseUp);
-      return () => {
-        window.removeEventListener("mousemove", handleMouseMove);
-        window.removeEventListener("mouseup", handleMouseUp);
-      };
-    }
-  }, [isDragging]);
 
   const addItem = () => {
     if (newItemText.trim()) {
@@ -99,36 +62,8 @@ export default function RouletteWindow({ onClose }: RouletteWindowProps) {
   };
 
   return (
-    <Box
-      ref={windowRef}
-      position="fixed"
-      left={`${position.x}px`}
-      top={`${position.y}px`}
-      width="400px"
-      bg="gray.800"
-      borderRadius="md"
-      boxShadow="2xl"
-      cursor={isDragging ? "grabbing" : "grab"}
-      onMouseDown={handleMouseDown}
-      zIndex={1000}
-      border="1px solid"
-      borderColor="gray.700"
-      userSelect="none"
-    >
-      <HStack
-        bg="gray.700"
-        px={3}
-        py={2}
-        borderTopRadius="md"
-        justifyContent="space-between"
-      >
-        <Text fontSize="sm" fontWeight="bold" color="white" userSelect="none">
-          🎰 ルーレット
-        </Text>
-        <CloseButton className="no-drag" size="sm" onClick={onClose} />
-      </HStack>
-
-      <VStack p={4} gap={4} className="no-drag">
+    <DraggableWindow title="🎰 ルーレット" width="400px" onClose={onClose}>
+      <VStack gap={4}>
         <Box position="relative" width="250px" height="250px">
           <svg
             width="250"
@@ -279,6 +214,6 @@ export default function RouletteWindow({ onClose }: RouletteWindowProps) {
           </VStack>
         </VStack>
       </VStack>
-    </Box>
+    </DraggableWindow>
   );
 }
