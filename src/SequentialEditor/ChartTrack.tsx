@@ -1,4 +1,4 @@
-import { Bleed, Center, Editable, Flex, Stack, Text, Button, Box } from "@chakra-ui/react";
+import { Bleed, Center, Editable, Flex, Stack, Text, Button, Box, HStack } from "@chakra-ui/react";
 import { useSnapshot } from "valtio";
 import store from "../store/store";
 import { useRef, useState } from "react";
@@ -20,6 +20,7 @@ import {
   DialogFooter, 
   DialogActionTrigger 
 } from "../components/ui/dialog";
+import ChartTrackPreview from "./ChartTrack/ChartTrackPreview";
 
 export default function ChartTrack(props: { uuid: string; }) {
 
@@ -144,10 +145,11 @@ export default function ChartTrack(props: { uuid: string; }) {
         Lv.{chart?.level ?? 1}
       </Button>
     </Bleed>
-    {/* スパナマークメニューを右下に配置 */}
-    <Bleed position={"absolute"} right={2} bottom={2}>
+    {/* スパナマークメニューとプレビューを右下に配置 */}
+    <HStack position={"absolute"} right={2} bottom={2}>
+      <ChartTrackPreview chartUuid={props.uuid} />
       <ChartTrackMenu chartUuid={props.uuid} />
-    </Bleed>
+    </HStack>
   </>;
 
   return (
