@@ -1,6 +1,6 @@
 import { RefObject, useEffect, useRef } from "react";
 
-export default function Stem({ audioSrc, audioRef, volume = 1.0 }: { audioSrc: string, audioRef: RefObject<HTMLAudioElement>, volume?: number }) {
+export default function Stem({ audioSrc, audioRef, volume = 1.0 }: { audioSrc: string, audioRef: RefObject<HTMLAudioElement | null>, volume?: number }) {
 
   const stemRef = useRef<HTMLAudioElement>(null);
 
