@@ -5,6 +5,7 @@ import { OrbitControls } from '@react-three/drei';
 import { Box } from "@chakra-ui/react";
 import { SingleNoteEvent, LongNoteEvent } from "../../../store/noteEvent";
 import ChartEventType from "../../../store/chartEventType";
+import { SpeedChangeEvent } from "../../../store/speedChangeEvent";
 
 interface PreviewCanvasProps {
   chartUuid: string;
@@ -18,10 +19,46 @@ export default function PreviewCanvas({ chartUuid }: PreviewCanvasProps) {
   const numberOfLanes = chart?.laneNumber ?? 12;
   const offsetZ = -3;
   const laneLength = 100;
-  const highSpeed = 0.2;
+  const highSpeed = 5.0;
 
   // ピアノの黒鍵の位置（0-indexed）: C#, D#, F#, G#, A#
   const blackKeys = new Set([1, 3, 6, 8, 10]);
+
+  // 速度変化イベントを時系列順に取得
+  const speedChangeEvents = (chart?.events.filter(event => 
+    event.type === ChartEventType.SpeedChange
+  ) as SpeedChangeEvent[]).sort((a, b) => 
+    a.position.seconds - b.position.seconds
+  );
+
+  // 0秒から指定秒数までの積分距離を計算する関数
+  const integrateDistance = (targetSeconds: number): number => {
+    let distance = 0;
+    let lastTime = 0;
+    let currentSpeed = highSpeed;
+
+    for (const event of speedChangeEvents) {
+      if (event.position.seconds <= targetSeconds) {
+        // この区間を現在の速度で積分
+        distance += (event.position.seconds - lastTime) * currentSpeed;
+        lastTime = event.position.seconds;
+        currentSpeed = event.speed;
+      } else {
+        break;
+      }
+    }
+    // 残りの区間
+    distance += (targetSeconds - lastTime) * currentSpeed;
+    return distance;
+  };
+
+  // 秒数からZ座標に変換する関数（0秒からの積分方式）
+  const secondsToZ = (seconds: number): number => {
+    const currentDistance = integrateDistance(playingPosition.seconds);
+    const noteDistance = integrateDistance(seconds);
+    // 現在位置との差分を取る（奥側が負）
+    return -(noteDistance - currentDistance);
+  };
 
   // ノーツの色を取得する関数
   const getNoteColor = (lane: number): string => {
@@ -30,36 +67,29 @@ export default function PreviewCanvas({ chartUuid }: PreviewCanvasProps) {
     return blackKeys.has(pianoKey) ? "blue" : "white";
   };
 
-  // 表示範囲を計算（playingPositionの前後の時間）
-  const viewRangeSeconds = 5; // 5秒先まで表示
-  const viewPastSeconds = 2; // 2秒前まで表示（判定線を過ぎた後も表示）
-  const viewStartSeconds = playingPosition.seconds - viewPastSeconds;
-  const viewEndSeconds = playingPosition.seconds + viewRangeSeconds;
+  // 表示範囲を距離ベースで計算
+  const viewRangeDistance = 100; // 判定線から奥側への表示距離
+  const viewPastDistance = 10;   // 判定線から手前側への表示距離
 
-  // 表示範囲内のノーツをフィルタリング
+  // 表示範囲内のノーツをフィルタリング（距離ベース）
   const visibleNotes = chart?.events.filter(event => {
     if (event.type === ChartEventType.SingleNote || event.type === ChartEventType.LongNote) {
-      const noteSeconds = event.position.seconds;
-      return noteSeconds >= viewStartSeconds && noteSeconds <= viewEndSeconds;
+      const z = secondsToZ(event.position.seconds);
+      // Z座標が表示範囲内かチェック（手前が正、奥が負）
+      return z >= -viewRangeDistance && z <= viewPastDistance;
     }
     return false;
   }) || [];
 
-  // 秒数からZ座標に変換する関数
-  const secondsToZ = (seconds: number): number => {
-    const relativeSeconds = seconds - playingPosition.seconds;
-    return -(relativeSeconds / viewRangeSeconds) * laneLength * highSpeed;
-  };
-
   return (
     <Box width={400} height={1080/1920*400}>
       <Canvas
-        camera={{ position: [0, 5, 2], fov: 30 }}
+        camera={{ position: [0, 5, 5], fov: 30 }}
         shadows
       >
         <ambientLight intensity={0.5} />
         <directionalLight position={[10, 10, 5]} intensity={1} />
-        <OrbitControls />
+        <OrbitControls target={[0,0,-2]} />
 
         {/* レーン数ぶん描画 */}
         {
