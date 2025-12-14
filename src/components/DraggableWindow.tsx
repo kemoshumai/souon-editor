@@ -85,7 +85,7 @@ export default function DraggableWindow({
         <CloseButton className="no-drag" size="sm" onClick={onClose} />
       </HStack>
 
-      <Box p={4} className="no-drag">
+      <Box className="no-drag">
         {children}
       </Box>
     </Box>

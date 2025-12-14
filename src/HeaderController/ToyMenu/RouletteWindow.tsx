@@ -63,7 +63,7 @@ export default function RouletteWindow({ onClose }: RouletteWindowProps) {
 
   return (
     <DraggableWindow title="🎰 ルーレット" width="400px" onClose={onClose}>
-      <VStack gap={4}>
+      <VStack gap={4} p={4} >
         <Box position="relative" width="250px" height="250px">
           <svg
             width="250"
