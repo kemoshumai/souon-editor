@@ -1,4 +1,11 @@
-import { Button, HStack, Input, Separator, Stack, Text } from "@chakra-ui/react";
+import {
+  Button,
+  HStack,
+  Input,
+  Separator,
+  Stack,
+  Text,
+} from "@chakra-ui/react";
 import { PiPause, PiPlay } from "react-icons/pi";
 import { useSnapshot } from "valtio";
 import store from "./store/store";
@@ -12,26 +19,41 @@ import UpdateCheck from "./HeaderController/UpdateCheck";
 import ToyMenu from "./HeaderController/ToyMenu";
 
 export default function HeaderController() {
-
   const snap = useSnapshot(store);
-  
+
   const [inputName, setInputName] = useState(snap.project.name);
 
   return (
-    <Stack w={"100vw"} gap={0} position={"relative"} zIndex={40}>
+    <Stack
+      w={"100vw"}
+      gap={0}
+      position={"relative"}
+      zIndex={40}
+      userSelect={"none"}
+      backdropFilter={
+        snap.userSettings.headerBlur ? "blur(8px) brightness(0.7)" : ""
+      }
+      style={
+        snap.userSettings.headerBlur
+          ? { boxShadow: "0 3px 10px rgba(0,0,0,0.3)" }
+          : {}
+      }
+    >
       <TitleBanner />
       <HStack w={"100vw"}>
         <FileMenu />
         <PlusMenu />
-        <Button w="10" h="10" onClick={_=>store.playing = !snap.playing}>{ snap.playing ? <PiPause /> :<PiPlay /> }</Button>
+        <Button w="10" h="10" onClick={(_) => (store.playing = !snap.playing)}>
+          {snap.playing ? <PiPause /> : <PiPlay />}
+        </Button>
         <TopOrBottom />
         <SettingsMenu />
         <ToyMenu />
         <Input
           w={300}
           value={inputName}
-          onChange={e => setInputName(e.target.value)}
-          onBlur={() => store.project.name = inputName}
+          onChange={(e) => setInputName(e.target.value)}
+          onBlur={() => (store.project.name = inputName)}
         />
         <HStack mx={2}>
           <Text>秒尺：</Text>

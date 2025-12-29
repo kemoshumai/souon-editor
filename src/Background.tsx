@@ -5,7 +5,6 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import { Bleed } from "@chakra-ui/react";
 
 export default function Background() {
-  
   const snap = useSnapshot(store);
 
   const backgroundImage = useAsync(async () => {
@@ -18,20 +17,24 @@ export default function Background() {
   return (
     <>
       {backgroundImage.value && (
-      <Bleed
-        position="fixed"
-        top={0}
-        left={0}
-        w={"100vw"}
-        h={"100vh"}
-        filter={snap.userSettings.backgroundBlur ? "blur(8px) brightness(0.7)" : "none"}
-        backgroundImage={`url('${backgroundImage.value}')`}
-        backgroundSize="cover"
-        backgroundPosition="center"
-        backgroundRepeat="no-repeat"
-        zIndex={0}
-        overflow={"hidden"}
-      />
+        <Bleed
+          position="fixed"
+          top={0}
+          left={0}
+          w={"100vw"}
+          h={"100vh"}
+          filter={
+            snap.userSettings.backgroundBlur
+              ? "blur(8px) brightness(0.7)"
+              : "none"
+          }
+          backgroundImage={`url('${backgroundImage.value}')`}
+          backgroundSize="cover"
+          backgroundPosition="center"
+          backgroundRepeat="no-repeat"
+          zIndex={0}
+          overflow={"hidden"}
+        />
       )}
     </>
   );

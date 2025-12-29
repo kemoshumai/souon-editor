@@ -5,9 +5,9 @@ import UserSettings from "./userSettings";
 interface Store {
   project: Project;
   playing: boolean;
-  items: string[];// DndKitのSortableContext用
-  saved: boolean;// 保存されているかどうか
-  filepath: string;// 保存先のファイルパス
+  items: string[]; // DndKitのSortableContext用
+  saved: boolean; // 保存されているかどうか
+  filepath: string; // 保存先のファイルパス
   userSettings: UserSettings;
   isUserSettingsLoaded: boolean; // ユーザー設定がロードされたかどうか
   isPythonEnvReady: boolean; // Pythonのセットアップが完了したかどうか
@@ -36,10 +36,10 @@ const store = proxy<Store>({
     bass: false,
     drums: false,
     other: false,
-    vocals: false
+    vocals: false,
   },
   moca: false,
-  rouletteWindow: false
+  rouletteWindow: false,
 });
 
 (async () => {

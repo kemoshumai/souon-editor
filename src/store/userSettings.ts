@@ -1,16 +1,18 @@
-import * as path from '@tauri-apps/api/path';
+import * as path from "@tauri-apps/api/path";
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 
 export default class UserSettings {
   background: string;
   backgroundBlur: boolean;
-  aiProvider: 'ollama' | 'google-ai-studio';
+  headerBlur: boolean;
+  aiProvider: "ollama" | "google-ai-studio";
   googleAiApiKey: string;
 
   constructor() {
     this.background = "";
     this.backgroundBlur = false;
-    this.aiProvider = 'ollama';
+    this.headerBlur = false;
+    this.aiProvider = "ollama";
     this.googleAiApiKey = "";
   }
 
@@ -30,11 +32,11 @@ export default class UserSettings {
     return this.backgroundBlur;
   }
 
-  setAiProvider(provider: 'ollama' | 'google-ai-studio'): void {
+  setAiProvider(provider: "ollama" | "google-ai-studio"): void {
     this.aiProvider = provider;
   }
 
-  getAiProvider(): 'ollama' | 'google-ai-studio' {
+  getAiProvider(): "ollama" | "google-ai-studio" {
     return this.aiProvider;
   }
 
@@ -45,35 +47,42 @@ export default class UserSettings {
   getGoogleAiApiKey(): string {
     return this.googleAiApiKey;
   }
-  
+
   static createDefault(): UserSettings {
     return new UserSettings();
   }
 
   toJSON(): string {
-    return JSON.stringify({ 
-      background: this.background, 
+    return JSON.stringify({
+      background: this.background,
       backgroundBlur: this.backgroundBlur,
+      headerBlur: this.headerBlur,
       aiProvider: this.aiProvider,
-      googleAiApiKey: this.googleAiApiKey
+      googleAiApiKey: this.googleAiApiKey,
     });
   }
 
   async save(): Promise<void> {
-    const saveTo = await path.join(await path.appLocalDataDir(), "userSettings.json");
+    const saveTo = await path.join(
+      await path.appLocalDataDir(),
+      "userSettings.json",
+    );
     await writeTextFile(saveTo, this.toJSON());
   }
 
   static async load(): Promise<UserSettings | null> {
-
     try {
-      const loadFrom = await path.join(await path.appLocalDataDir(), "userSettings.json");
+      const loadFrom = await path.join(
+        await path.appLocalDataDir(),
+        "userSettings.json",
+      );
       const data = await readTextFile(loadFrom);
       const json = JSON.parse(data);
       const settings = new UserSettings();
       settings.background = json.background || "";
       settings.backgroundBlur = json.backgroundBlur || false;
-      settings.aiProvider = json.aiProvider || 'ollama';
+      settings.headerBlur = json.headerBlur || false;
+      settings.aiProvider = json.aiProvider || "ollama";
       settings.googleAiApiKey = json.googleAiApiKey || "";
       return settings;
     } catch (error) {
