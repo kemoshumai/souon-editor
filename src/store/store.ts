@@ -20,6 +20,7 @@ interface Store {
   };
   moca: boolean;
   rouletteWindow: boolean;
+  metadataWindow: boolean;
 }
 
 const store = proxy<Store>({
@@ -40,6 +41,7 @@ const store = proxy<Store>({
   },
   moca: false,
   rouletteWindow: false,
+  metadataWindow: false,
 });
 
 (async () => {

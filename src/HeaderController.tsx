@@ -6,7 +6,7 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
-import { PiPause, PiPlay } from "react-icons/pi";
+import { PiDatabase, PiPause, PiPlay } from "react-icons/pi";
 import { useSnapshot } from "valtio";
 import store from "./store/store";
 import { useState } from "react";
@@ -59,6 +59,13 @@ export default function HeaderController() {
           <Text>秒尺：</Text>
           <Text>{snap.project.musicLength}</Text>
         </HStack>
+        <Button
+          w="10"
+          h="10"
+          onClick={() => (store.metadataWindow = !snap.metadataWindow)}
+        >
+          <PiDatabase />
+        </Button>
         <UpdateCheck />
       </HStack>
       <Separator />

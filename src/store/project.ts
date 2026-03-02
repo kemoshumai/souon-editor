@@ -9,14 +9,17 @@ import { LongNoteEvent, SingleNoteEvent } from "./noteEvent";
 import Lane from "./lane";
 import { SpeedChangeEvent } from "./speedChangeEvent";
 import store from "./store";
-import { secondsToNanosecondsBigInt, safeBigInt } from '../utils/bigintHelpers';
+import { secondsToNanosecondsBigInt, safeBigInt } from "../utils/bigintHelpers";
 
 // プロジェクトごとのキャッシュを外部で管理
-const snappingPositionsCache = new WeakMap<Project, {
-  positions: TemporalPosition[];
-  zoomScale: number;
-  tempoListHash: string;
-}>();
+const snappingPositionsCache = new WeakMap<
+  Project,
+  {
+    positions: TemporalPosition[];
+    zoomScale: number;
+    tempoListHash: string;
+  }
+>();
 
 export default class Project {
   music: string;
@@ -27,19 +30,28 @@ export default class Project {
   musicTempoList: TempoEvent[];
   playingPosition: TemporalPosition;
   stems: {
-    bass: string,
-    drums: string,
-    other: string,
-    vocals: string
+    bass: string;
+    drums: string;
+    other: string;
+    vocals: string;
   };
   stemNotes: {
-    bass: { pitch: number; velocity: number; time: number }[],
-    drums: { pitch: number; velocity: number; time: number }[],
-    other: { pitch: number; velocity: number; time: number }[],
-    vocals: { pitch: number; velocity: number; time: number }[],
+    bass: { pitch: number; velocity: number; time: number }[];
+    drums: { pitch: number; velocity: number; time: number }[];
+    other: { pitch: number; velocity: number; time: number }[];
+    vocals: { pitch: number; velocity: number; time: number }[];
+  };
+  metadata: {
+    composer: string;
+    chartCreator: string;
   };
 
-  constructor(music: string, name: string, charts: Chart[], musicTempoList: TempoEvent[]) {
+  constructor(
+    music: string,
+    name: string,
+    charts: Chart[],
+    musicTempoList: TempoEvent[],
+  ) {
     this.music = music;
     this.name = name;
     this.charts = charts;
@@ -53,14 +65,19 @@ export default class Project {
       bass: "",
       drums: "",
       other: "",
-      vocals: ""
+      vocals: "",
     };
 
     this.stemNotes = {
       bass: [],
       drums: [],
       other: [],
-      vocals: []
+      vocals: [],
+    };
+
+    this.metadata = {
+      composer: "",
+      chartCreator: "",
     };
   }
 
@@ -80,29 +97,39 @@ export default class Project {
   getTemporalPositionFromTempoEvent(tempoEvent: TempoEvent): TemporalPosition {
     const { uuid } = tempoEvent;
     const tempoEvents = this.musicTempoList;
-    const currentTempoEventIndex = tempoEvents.findIndex(t => t.uuid === uuid);
+    const currentTempoEventIndex = tempoEvents.findIndex(
+      (t) => t.uuid === uuid,
+    );
     if (currentTempoEventIndex === -1) {
-      throw new Error(`TempoEvent with uuid ${uuid} not found in musicTempoList`);
+      throw new Error(
+        `TempoEvent with uuid ${uuid} not found in musicTempoList`,
+      );
     }
     const previousTempoEvents = tempoEvents.slice(0, currentTempoEventIndex);
 
     let sum = TemporalPosition.createWithSeconds(0);
-    for(const e of previousTempoEvents) {
+    for (const e of previousTempoEvents) {
       sum = sum.add(e.getTemporalLength().nanoseconds);
     }
 
     return sum;
   }
 
-  getCoordinatePositionFromTemporalPosition(temporalPosition: TemporalPosition): number {
-    return Number(temporalPosition.nanoseconds) / 1_000_000_000 * this.zoomScale * 100;
+  getCoordinatePositionFromTemporalPosition(
+    temporalPosition: TemporalPosition,
+  ): number {
+    return (
+      (Number(temporalPosition.nanoseconds) / 1_000_000_000) *
+      this.zoomScale *
+      100
+    );
   }
 
   private _generateSnappingPositions(): TemporalPosition[] {
     const tempoEvents = this.musicTempoList;
     const plannedSnappingPosition: TemporalPosition[] = [];
 
-    for(const tempoEvent of tempoEvents) {
+    for (const tempoEvent of tempoEvents) {
       // テンポ情報の始まりの位置を取得
       const basePosition = this.getTemporalPositionFromTempoEvent(tempoEvent);
 
@@ -110,19 +137,26 @@ export default class Project {
       const barTemporalUnit = tempoEvent.getBarTemporalUnit();
 
       // スナップ位置追加を小節数ぶん繰り返す
-      for(let i = 0; i < tempoEvent.length; i++) {
+      for (let i = 0; i < tempoEvent.length; i++) {
         // 小節の始まる位置
-        const position = basePosition.add(barTemporalUnit.multiply(safeBigInt(i)).nanoseconds);
+        const position = basePosition.add(
+          barTemporalUnit.multiply(safeBigInt(i)).nanoseconds,
+        );
 
         // 1小節を分割する回数を計算
-        const resolution = Math.floor(tempoEvent.beat) * ( this.zoomScale < 3 ? 1 : 12 );
+        const resolution =
+          Math.floor(tempoEvent.beat) * (this.zoomScale < 3 ? 1 : 12);
 
         // 1小節を分割した時間を計算
-        const dividedTemporalUnit = barTemporalUnit.divide(safeBigInt(resolution));
+        const dividedTemporalUnit = barTemporalUnit.divide(
+          safeBigInt(resolution),
+        );
 
         // 分割した時間を分割数ぶん繰り返す
-        for(let j = 0; j < resolution; j++) {
-          const snappingPosition = position.add(dividedTemporalUnit.multiply(safeBigInt(j)).nanoseconds);
+        for (let j = 0; j < resolution; j++) {
+          const snappingPosition = position.add(
+            dividedTemporalUnit.multiply(safeBigInt(j)).nanoseconds,
+          );
           plannedSnappingPosition.push(snappingPosition);
         }
       }
@@ -132,25 +166,38 @@ export default class Project {
   }
 
   private _getTempoListHash(): string {
-    return JSON.stringify(this.musicTempoList.map(t => ({ uuid: t.uuid, tempo: t.tempo, beat: t.beat, length: t.length })));
+    return JSON.stringify(
+      this.musicTempoList.map((t) => ({
+        uuid: t.uuid,
+        tempo: t.tempo,
+        beat: t.beat,
+        length: t.length,
+      })),
+    );
   }
 
   clearSnappingCache(): void {
     snappingPositionsCache.delete(this);
   }
 
-  getSnappedTemporalPosition(temporalPosition: TemporalPosition): TemporalPosition {
+  getSnappedTemporalPosition(
+    temporalPosition: TemporalPosition,
+  ): TemporalPosition {
     // 外部キャッシュから取得
     const currentTempoListHash = this._getTempoListHash();
     let cache = snappingPositionsCache.get(this);
-    
+
     // キャッシュが無効な場合は再生成
-    if (!cache || cache.zoomScale !== this.zoomScale || cache.tempoListHash !== currentTempoListHash) {
+    if (
+      !cache ||
+      cache.zoomScale !== this.zoomScale ||
+      cache.tempoListHash !== currentTempoListHash
+    ) {
       const positions = this._generateSnappingPositions();
       cache = {
         positions,
         zoomScale: this.zoomScale,
-        tempoListHash: currentTempoListHash
+        tempoListHash: currentTempoListHash,
       };
       snappingPositionsCache.set(this, cache);
     }
@@ -164,7 +211,7 @@ export default class Project {
     const ns = temporalPosition.nanoseconds;
     let minDiff = Number.MAX_VALUE;
     let nearest = plannedSnappingPosition[0];
-    
+
     // より効率的な最近隣探索
     for (const position of plannedSnappingPosition) {
       const diff = Math.abs(Number(position.nanoseconds - ns));
@@ -173,17 +220,17 @@ export default class Project {
         nearest = position;
       }
     }
-    
+
     return nearest;
   }
-  
+
   toBinaryString(u8Array: Uint8Array): string {
-      const chunkSize = 0x8000;
-      const c = [];
-      for (let i = 0; i < u8Array.length; i += chunkSize) {
-          c.push(String.fromCharCode(...u8Array.subarray(i, i + chunkSize)));
-      }
-      return c.join("");
+    const chunkSize = 0x8000;
+    const c = [];
+    for (let i = 0; i < u8Array.length; i += chunkSize) {
+      c.push(String.fromCharCode(...u8Array.subarray(i, i + chunkSize)));
+    }
+    return c.join("");
   }
 
   async getMusicBase64(): Promise<[string, string]> {
@@ -196,10 +243,10 @@ export default class Project {
   }
 
   async getSerialized(): Promise<string> {
-
     const [base64, mimeType] = await this.getMusicBase64();
     const mimeTypeParts = mimeType.split("/");
-    const mimeTypeFull = mimeTypeParts.length > 1 ? mimeType : "application/octet-stream"; // MIMEタイプが存在しない場合はデフォルトを使用
+    const mimeTypeFull =
+      mimeTypeParts.length > 1 ? mimeType : "application/octet-stream"; // MIMEタイプが存在しない場合はデフォルトを使用
     const music = `data:${mimeTypeFull};base64,${base64}`; // MIMEタイプを追加
 
     return JSON.stringify({
@@ -208,16 +255,17 @@ export default class Project {
       musicLength: this.musicLength,
       zoomScale: this.zoomScale,
       playingPosition: this.playingPosition.getSerialized(),
-      charts: this.charts.map(c => ({
+      charts: this.charts.map((c) => ({
         uuid: c.uuid,
         label: c.label,
         laneNumber: c.laneNumber,
         level: c.level,
-        events: c.events
+        events: c.events,
       })),
       musicTempoList: this.musicTempoList,
       stems: this.stems,
-      stemNotes: this.stemNotes
+      stemNotes: this.stemNotes,
+      metadata: this.metadata,
     });
   }
 
@@ -226,14 +274,14 @@ export default class Project {
       filters: [
         {
           name: "SOF",
-          extensions: ["sof"]
-        }
-      ]
+          extensions: ["sof"],
+        },
+      ],
     });
 
     if (!path) return;
 
-    await writeTextFile(path, await this.getSerialized() , { create: true });
+    await writeTextFile(path, await this.getSerialized(), { create: true });
 
     store.saved = true;
     store.filepath = path;
@@ -241,7 +289,7 @@ export default class Project {
     toaster.create({
       title: "ファイルを保存しました",
       description: "保存先：" + path,
-      type: "info"
+      type: "info",
     });
   }
 
@@ -250,9 +298,9 @@ export default class Project {
       filters: [
         {
           name: "SOF",
-          extensions: ["sof"]
-        }
-      ]
+          extensions: ["sof"],
+        },
+      ],
     });
 
     console.log("[loadFromFile] Selected file path:", path);
@@ -263,7 +311,6 @@ export default class Project {
   }
 
   async loadFromFilePath(path: string) {
-
     const data = await readTextFile(path);
     const json = JSON.parse(data);
 
@@ -271,36 +318,66 @@ export default class Project {
 
     console.log(json);
 
-    this.music = json.music;// 音声ファイルはそのままでOK
-    this.name = json.name;// プロジェクト名もそのままでOK
-    this.musicLength = json.musicLength;// 音声ファイルの長さもnumberなのでそのままでOK
-    this.zoomScale = json.zoomScale;// ズーム倍率もnumberなのでそのままでOK
-    this.playingPosition = TemporalPosition.fromJSON(json.playingPosition);// TemporalPositionはstringなのでfromJSONで変換
-    this.charts = json.charts.map((c: any) => new Chart(c.uuid, c.events.map((e: any)=>{
-      if (e.type === ChartEventType.SingleNote) {
-        return new SingleNoteEvent(e.uuid, TemporalPosition.fromJSON(e.position), e.lane as Lane);
-      } else if (e.type === ChartEventType.LongNote) {
-        return new LongNoteEvent(e.uuid, TemporalPosition.fromJSON(e.position), e.lane as Lane, TemporalPosition.fromJSON(e.endPosition));
-      } else if (e.type === ChartEventType.SpeedChange) {
-        return new SpeedChangeEvent(e.uuid, TemporalPosition.fromJSON(e.position), e.speed);
-      }
-      throw new Error("Invalid ChartEventType");
-    }), c.laneNumber, c.label, c.level ?? 1));// クラスに戻す（levelがない場合はデフォルト1）
-    this.musicTempoList = json.musicTempoList.map((t: any) => new TempoEvent(t.uuid, t.tempo, t.beat, t.length));// クラスに戻す
+    this.music = json.music; // 音声ファイルはそのままでOK
+    this.name = json.name; // プロジェクト名もそのままでOK
+    this.musicLength = json.musicLength; // 音声ファイルの長さもnumberなのでそのままでOK
+    this.zoomScale = json.zoomScale; // ズーム倍率もnumberなのでそのままでOK
+    this.playingPosition = TemporalPosition.fromJSON(json.playingPosition); // TemporalPositionはstringなのでfromJSONで変換
+    this.charts = json.charts.map(
+      (c: any) =>
+        new Chart(
+          c.uuid,
+          c.events.map((e: any) => {
+            if (e.type === ChartEventType.SingleNote) {
+              return new SingleNoteEvent(
+                e.uuid,
+                TemporalPosition.fromJSON(e.position),
+                e.lane as Lane,
+              );
+            } else if (e.type === ChartEventType.LongNote) {
+              return new LongNoteEvent(
+                e.uuid,
+                TemporalPosition.fromJSON(e.position),
+                e.lane as Lane,
+                TemporalPosition.fromJSON(e.endPosition),
+              );
+            } else if (e.type === ChartEventType.SpeedChange) {
+              return new SpeedChangeEvent(
+                e.uuid,
+                TemporalPosition.fromJSON(e.position),
+                e.speed,
+              );
+            }
+            throw new Error("Invalid ChartEventType");
+          }),
+          c.laneNumber,
+          c.label,
+          c.level ?? 1,
+        ),
+    ); // クラスに戻す（levelがない場合はデフォルト1）
+    this.musicTempoList = json.musicTempoList.map(
+      (t: any) => new TempoEvent(t.uuid, t.tempo, t.beat, t.length),
+    ); // クラスに戻す
+
+    // メタデータを復元
+    this.metadata = {
+      composer: json.metadata?.composer ?? "",
+      chartCreator: json.metadata?.chartCreator ?? "",
+    };
 
     // ステム情報を復元
     this.stems = {
       bass: json.stems.bass,
       drums: json.stems.drums,
       other: json.stems.other,
-      vocals: json.stems.vocals
+      vocals: json.stems.vocals,
     };
 
     this.stemNotes = {
       bass: json.stemNotes.bass,
       drums: json.stemNotes.drums,
       other: json.stemNotes.other,
-      vocals: json.stemNotes.vocals
+      vocals: json.stemNotes.vocals,
     };
 
     // 外部キャッシュをクリア
@@ -313,7 +390,7 @@ export default class Project {
     toaster.create({
       title: "ファイルを読み込みました",
       description: "読み込み元：" + path,
-      type: "info"
+      type: "info",
     });
   }
 
@@ -322,14 +399,14 @@ export default class Project {
 
     if (!path) return;
 
-    await writeTextFile(path, await this.getSerialized() , { create: true });
+    await writeTextFile(path, await this.getSerialized(), { create: true });
 
     store.saved = true;
 
     toaster.create({
       title: "ファイルを上書き保存しました",
       description: "保存先：" + path,
-      type: "info"
+      type: "info",
     });
   }
 
@@ -342,7 +419,7 @@ export default class Project {
   }
 
   moveTempoEventUp(uuid: string) {
-    const index = this.musicTempoList.findIndex(t => t.uuid === uuid);
+    const index = this.musicTempoList.findIndex((t) => t.uuid === uuid);
     if (index < this.musicTempoList.length - 1 && index !== -1) {
       const tempoEvent = this.musicTempoList[index];
       this.musicTempoList.splice(index, 1);
@@ -352,7 +429,7 @@ export default class Project {
   }
 
   moveTempoEventDown(uuid: string) {
-    const index = this.musicTempoList.findIndex(t => t.uuid === uuid);
+    const index = this.musicTempoList.findIndex((t) => t.uuid === uuid);
     if (index > 0) {
       const tempoEvent = this.musicTempoList[index];
       this.musicTempoList.splice(index, 1);
@@ -362,11 +439,10 @@ export default class Project {
   }
 
   deleteTempoEvent(uuid: string) {
-    const index = this.musicTempoList.findIndex(t => t.uuid === uuid);
+    const index = this.musicTempoList.findIndex((t) => t.uuid === uuid);
     if (index !== -1) {
       this.musicTempoList.splice(index, 1);
       this.clearSnappingCache();
     }
   }
-
 }
